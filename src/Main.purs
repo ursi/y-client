@@ -52,10 +52,12 @@ type Model =
   , currentMessage :: String
   , selectedThreadRoot :: Maybe (Id "Message")
   , messageParent :: Maybe (Id "Message")
+  , nameInput :: String
   }
 
 type State =
   { events :: Array Event
+  , names :: Map (Id "User") String
   , messages :: TreeMap (Id "Message") Message
   }
 
@@ -88,10 +90,15 @@ init _ = do
     { convoId
     , userId
     , wsClient
-    , state: { events: [], messages: TreeMap.empty }
+    , state:
+        { events: []
+        , messages: TreeMap.empty
+        , names: Map.empty
+        }
     , currentMessage: ""
     , selectedThreadRoot: Nothing
     , messageParent: Nothing
+    , nameInput: ""
     }
 
 data Msg
@@ -102,6 +109,8 @@ data Msg
   | SelectThreadRoot (Id "Message")
   | NewThread
   | SelectMessageParent (Id "Message")
+  | UpdateNameInput String
+  | UpdateName
 
 instance Eq Msg where
   eq m1 m2 = case m1, m2 of
@@ -111,6 +120,8 @@ instance Eq Msg where
     SelectThreadRoot mid1, SelectThreadRoot mid2 -> mid1 == mid2
     NewThread, NewThread -> true
     SelectMessageParent mid1, SelectMessageParent mid2 -> mid1 == mid2
+    UpdateNameInput s1, UpdateNameInput s2 -> s1 == s2
+    UpdateName, UpdateName -> true
     _, _ -> false
 
 update :: Model -> Msg -> Update Msg Model
@@ -120,13 +131,26 @@ update model@{ userId, convoId } =
 
     focusInput =
       afterRender
-        (window
-         >>= document
-         >>= getElementById inputId .> map toMaybeHTMLElement
-         >>= maybe (pure unit) (focus {})
-        )
+      $ window
+        >>= document
+        >>= getElementById inputId .> map toMaybeHTMLElement
+        >>= maybe (pure unit) (focus {})
   in
   case _ of
+    UpdateName -> do
+      liftEffect do
+        pushEvent model
+          \_ ->
+            EventPayload_SetName
+              { convoId
+              , userId
+              , name: model.nameInput
+              }
+
+      pure model
+
+    UpdateNameInput str -> pure $ model { nameInput = str }
+
     SelectMessageParent mid -> do
       focusInput
       pure $ model { messageParent = Just mid }
@@ -202,10 +226,13 @@ update model@{ userId, convoId } =
           newEvents = addEvents model.state.events events
           processedEvents = processEvents newEvents
 
+          names :: Map (Id "User") String
+          names = processedEvents.names
+
           messages :: TreeMap (Id "Message") Message
           messages = processedEvents.messages
 
-          model2 = model { state = { events: newEvents, messages } }
+          model2 = model { state = { events: newEvents, names, messages } }
         in
         case model.selectedThreadRoot of
           Just mid ->
@@ -286,8 +313,14 @@ processEvents ::
      }
 processEvents =
   splitEvents
-  >>> \{ {-nameEvents,-} messageEvents } ->
-        { names: Map.empty
+  >>> \{ nameEvents, messageEvents } ->
+        { names:
+            foldl
+              (\acc { userId, name } ->
+                 Map.insert userId name acc
+              )
+              Map.empty
+              nameEvents
         , messages:
             messageEvents
             <#> _.message .> toIVP
@@ -344,7 +377,9 @@ view model =
   , body:
       [ CG.style [ CG.body [ C.margin "0" ] ]
       , H.divS
-          [ C.display "flex" ]
+          [ C.display "grid"
+          , C.grid "100vh / 30% 1fr"
+          ]
           []
           [ threadBar model
           , threadView model
@@ -366,15 +401,21 @@ threadBar model =
           )
       <#> fst
   in
-  H.divS [] []
-    [ H.button
-        [ A.onClick NewThread ]
-        [ H.text "New Thread" ]
-    , H.divS [ C.margin ".3em" ] []
-        [ H.text "Name: "
-        , H.input []
+  H.divS
+    [ C.display "grid"
+    , C.gridTemplateRows "max-content"
+    ]
+    []
+    [ H.div []
+        [ H.button [ A.onClick NewThread ] [ H.text "New Thread" ]
+        , H.divS [ C.margin ".3em" ] []
+            [ H.input [ A.onInput UpdateNameInput ]
+            , H.button [ A.onClick UpdateName ] [ H.text "Update Name"]
+            ]
         ]
-    , batch
+    , H.divS
+        [ C.overflow "auto" ]
+        []
       $ leaves
       <#> \mid ->
             TreeMap.lookup mid model.state.messages
@@ -441,7 +482,10 @@ threadView model =
                        , C.paddingTop "1px"
                        ]
                        []
-                       [ H.text "Mason" ]
+                       [ H.text
+                         $ Map.lookup mes.authorId model.state.names
+                         # fromMaybe "<anonomous>"
+                       ]
                    , H.div [] [ H.text mes.content ]
                    ]
              in
@@ -453,8 +497,8 @@ threadView model =
           )
       # \messagesHtml ->
           H.divS
-            [ C.maxHeight "100vh"
-            , C.display "grid"
+            [ C.display "grid"
+            , C.gridTemplateRows "max-content"
             ]
             []
             [ H.divS
