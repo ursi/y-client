@@ -8754,7 +8754,7 @@ var PS = {};
                       return Css.background("red");
                   };
                   return Data_Monoid.mempty(Data_Batched["$_MonoidBatched_7"]);
-              })(), Css.border("1px solid"), Css.padding(".3em") ])([ Attribute.onClick(Producer.producea($dollar_EqMsg_32))(new SelectThreadRoot(mid)) ])([ Html.text(mes) ]);
+              })(), Css.border("1px solid"), Css.padding(".3em"), Css.whiteSpace("pre-wrap") ])([ Attribute.onClick(Producer.producea($dollar_EqMsg_32))(new SelectThreadRoot(mid)) ])([ Html.text(mes) ]);
           })(Data_Maybe.maybe("oops")(function ($111) {
               return (function (v) {
                   return v.content;
@@ -8788,7 +8788,7 @@ var PS = {};
       if (mthread instanceof Data_Maybe.Nothing) {
           return messageInput;
       };
-      throw new Error("Failed pattern match at Main (line 472, column 3 - line 529, column 28): " + [ mthread.constructor.name ]);
+      throw new Error("Failed pattern match at Main (line 473, column 3 - line 530, column 28): " + [ mthread.constructor.name ]);
   };
   var view = function (model) {
       return {
