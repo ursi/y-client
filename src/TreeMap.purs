@@ -3,10 +3,13 @@ module TreeMap
   , VPC
   , Thread
   , TreeMap
-  , toTreeMap
-  , lookup
+  , empty
+  , findLeaf
   , getThread
   , getThreads
+  , leaves
+  , lookup
+  , toTreeMap
   )
   where
 
@@ -39,13 +42,13 @@ toTreeMap :: ∀ a b. Ord a => List (IVP a b) -> TreeMap a b
 toTreeMap =
   TreeMap
   <. foldl
-       (\acc@{ leaves, parents } { id, value, parent } ->
+       (\acc@{ parents } { id, value, parent } ->
           -- deal with parent
           case parent of
             Just pid ->
-              case Map.lookup pid leaves of
+              case Map.lookup pid acc.leaves of
                 Just parent' ->
-                  { leaves: Map.delete pid leaves
+                  { leaves: Map.delete pid acc.leaves
                   , parents:
                       Map.insert
                         pid
@@ -116,17 +119,17 @@ toTreeMap =
        }
 
 lookup :: ∀ a b. Ord a => a -> TreeMap a b -> Maybe (VPC a b)
-lookup key (TreeMap { leaves, parents })=
+lookup key (TreeMap r@{ parents })=
   case Map.lookup key parents of
     Just (Right vpc) -> Just vpc
-    Nothing -> Map.lookup key leaves
+    Nothing -> Map.lookup key r.leaves
     _ -> unsafeThrow "Tree.purs: lookup: Something has gone wrong"
 
 lookupEither :: ∀ a b. Ord a => a -> TreeMap a b -> Either String (VPC a b)
-lookupEither key (TreeMap { leaves, parents })=
+lookupEither key (TreeMap r@{ parents })=
   case Map.lookup key parents of
     Just (Right vpc) -> Right vpc
-    Nothing -> case Map.lookup key leaves of
+    Nothing -> case Map.lookup key r.leaves of
       Just value -> Right value
       Nothing -> Left $ "key not found"
 
@@ -166,10 +169,23 @@ getThread start tm = go start pure <#> NEList.reverse
       go ~$ (NEList.cons ~$ acc)
 
 getThreads :: ∀ a b. Ord a => TreeMap a b -> Array (Thread b)
-getThreads tm@(TreeMap { leaves }) =
-  Map.keys leaves
-  # (Set.toUnfoldable :: Set.Set a -> Array a)
+getThreads tm@(TreeMap r) =
+  Map.keys r.leaves
+  # Set.toUnfoldable
   # traverse (getThread ~$ tm)
   # case _ of
       Just a -> a
       Nothing -> unsafeThrow "Tree.purs: getThreads"
+
+leaves :: ∀ a b. TreeMap a b -> Array (a /\ VPC a b)
+leaves (TreeMap r) =  Map.toUnfoldable r.leaves
+
+findLeaf :: ∀ a b. Ord a => a -> TreeMap a b -> Maybe a
+findLeaf id tm =
+  lookup id tm
+  >>= \{ children } ->
+        case Array.uncons children of
+          Just { head } -> findLeaf head tm
+          Nothing -> Just id
+empty :: ∀ a b. TreeMap a b
+empty = TreeMap { leaves: Map.empty, parents: Map.empty }

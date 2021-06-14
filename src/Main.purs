@@ -3,6 +3,9 @@ module Main where
 import MasonPrelude
 
 import Attribute as A
+import Css (Styles)
+import Css as C
+import Css.Global as CG
 import Data.Array as Array
 import Data.List ((:))
 import Data.Map (Map)
@@ -11,20 +14,21 @@ import Data.Set as Set
 import Debug as Debug
 import Html (Html)
 import Html as H
-import Platform (Cmd(..), Program, Update, tell)
+import Platform (Cmd(..), Program, Update, afterRender, batch, tell)
 import Platform as Platform
 import Sub (Sub)
-import TreeMap (IVP, TreeMap, toTreeMap)
+import TreeMap (IVP, Thread, TreeMap, toTreeMap)
+import TreeMap as TreeMap
 import WebSocketSub (wsToSub)
+import WHATWG.HTML.All (document, focus, toMaybeHTMLElement, getElementById, window)
 import Y.Client.WebSocket (Client)
 import Y.Client.WebSocket as Ws
 import Y.Shared.Config as Config
 import Y.Shared.Event (Event(..), EventPayload(..))
-import Y.Shared.Id (Id(..))
+import Y.Shared.Id (Id)
 import Y.Shared.Id as Id
 import Y.Shared.Message (Message)
 import Y.Shared.Transmission (ToClient(..), ToServer(..))
-import Y.Shared.Transmission as Transm
 import Y.Shared.Util.Instant (Instant)
 import Y.Shared.Util.Instant as Instant
 
@@ -44,8 +48,15 @@ type Model =
   { convoId :: Id "Convo"
   , userId :: Id "User"
   , wsClient :: Client ToServer ToClient
-  , events :: Array Event
+  , state :: State
   , currentMessage :: String
+  , selectedThreadRoot :: Maybe (Id "Message")
+  , messageParent :: Maybe (Id "Message")
+  }
+
+type State =
+  { events :: Array Event
+  , messages :: TreeMap (Id "Message") Message
   }
 
 init :: Unit -> Update Msg Model
@@ -60,6 +71,7 @@ init _ = do
   wsClient <-
     liftEffect
     $ Ws.newConnection { url: "ws://" <> hostname <> ":" <> show Config.webSocketPort }
+    -- $ Ws.newConnection { url: "ws://y.maynards.site:8081" }
 
   tell
     $ Cmd
@@ -76,8 +88,10 @@ init _ = do
     { convoId
     , userId
     , wsClient
-    , events: []
+    , state: { events: [], messages: TreeMap.empty }
     , currentMessage: ""
+    , selectedThreadRoot: Nothing
+    , messageParent: Nothing
     }
 
 data Msg
@@ -85,42 +99,128 @@ data Msg
   | TransmissionReceived (Maybe ToClient)
   | UpdateMessage String
   | SendMessage
+  | SelectThreadRoot (Id "Message")
+  | NewThread
+  | SelectMessageParent (Id "Message")
 
 instance Eq Msg where
   eq m1 m2 = case m1, m2 of
     UpdateMessage s1, UpdateMessage s2 -> s1 == s2
     SendMessage, SendMessage -> true
     WebSocketOpened, WebSocketOpened -> true
+    SelectThreadRoot mid1, SelectThreadRoot mid2 -> mid1 == mid2
+    NewThread, NewThread -> true
+    SelectMessageParent mid1, SelectMessageParent mid2 -> mid1 == mid2
     _, _ -> false
 
 update :: Model -> Msg -> Update Msg Model
 update model@{ userId, convoId } =
   let
     _ = Debug.log model
+
+    focusInput =
+      afterRender
+        (window
+         >>= document
+         >>= getElementById inputId .> map toMaybeHTMLElement
+         >>= maybe (pure unit) (focus {})
+        )
   in
   case _ of
-    SendMessage -> do
-      liftEffect do
-        id :: Id "Message" <- Id.new
-        pushEvent model
-          \instant ->
-            EventPayload_MessageSend
-              { convoId
-              , message:
-                  { id
-                  , timeSent: instant
-                  , authorId: model.userId
-                  , convoId
-                  , depIds: mempty
-                  , content: model.currentMessage
-                  }
-              }
+    SelectMessageParent mid -> do
+      focusInput
+      pure $ model { messageParent = Just mid }
 
-      pure $ model { currentMessage = "" }
-    UpdateMessage str -> pure $ model { currentMessage = str }
+    NewThread -> do
+      focusInput
+
+      pure
+        (model
+           { selectedThreadRoot = Nothing
+           , messageParent = Nothing
+           }
+        )
+
+    SelectThreadRoot mid -> do
+      focusInput
+
+      pure
+        (model
+           { selectedThreadRoot = Just mid
+           , messageParent = Just mid
+           }
+        )
+
+    SendMessage -> do
+      focusInput
+
+      if model.currentMessage /= "" then
+        do
+          id :: Id "Message" <- liftEffect Id.new
+
+          liftEffect do
+            pushEvent model
+              \instant ->
+                EventPayload_MessageSend
+                  { convoId
+                  , message:
+                      { id
+                      , timeSent: instant
+                      , authorId: model.userId
+                      , convoId
+                      , depIds:
+                          model.messageParent
+                          <#> Set.singleton
+                          # fromMaybe mempty
+                      , content: model.currentMessage
+                      }
+                  }
+
+          pure
+            (model
+              { currentMessage = ""
+              , messageParent = Nothing
+              , selectedThreadRoot =
+                  case model.selectedThreadRoot of
+                    Nothing -> Just id
+                    _ -> model.selectedThreadRoot
+              }
+            )
+      else
+        pure model
+
+    UpdateMessage str ->
+      let model2 = model { currentMessage = str } in
+
+      case model.selectedThreadRoot, model.messageParent of
+        Just _, Nothing -> pure $ model2 { messageParent = model.selectedThreadRoot }
+        _, _ -> pure model2
+
     TransmissionReceived mtc -> case mtc of
       Just (ToClient_Broadcast events) ->
-        pure $ model { events = addEvents model.events events }
+        let
+          newEvents = addEvents model.state.events events
+          processedEvents = processEvents newEvents
+
+          messages :: TreeMap (Id "Message") Message
+          messages = processedEvents.messages
+
+          model2 = model { state = { events: newEvents, messages } }
+        in
+        case model.selectedThreadRoot of
+          Just mid ->
+            let mleaf = TreeMap.findLeaf mid messages in
+            pure
+            $ model2
+                { selectedThreadRoot = mleaf
+                , messageParent =
+                    if model.currentMessage == "" then
+                      mleaf
+                    else
+                      model.messageParent
+                }
+
+          Nothing -> pure model2
 
       Nothing -> pure model
 
@@ -180,13 +280,13 @@ eventTime :: Event -> Instant
 eventTime (Event e) = e.time
 
 processEvents ::
-  List Event
+  Array Event
   -> { names :: Map (Id "User") String
      , messages :: TreeMap (Id "Message") Message
      }
 processEvents =
   splitEvents
-  >>> \{ nameEvents, messageEvents } ->
+  >>> \{ {-nameEvents,-} messageEvents } ->
         { names: Map.empty
         , messages:
             messageEvents
@@ -195,7 +295,7 @@ processEvents =
         }
 
 splitEvents ::
-  List Event
+  Array Event
   -> { nameEvents ::
          List
            { convoId :: Id "Convo"
@@ -230,6 +330,7 @@ toIVP value@{ id, depIds } =
   , value
   , parent: Set.findMax depIds
   }
+
 subscriptions :: Model -> Sub Msg
 subscriptions model = wsToSub TransmissionReceived model.wsClient
 
@@ -241,84 +342,130 @@ view ::
 view model =
   { head: []
   , body:
-      [ H.div []
-          [ H.input
-              [ A.value model.currentMessage
-              , A.onInput UpdateMessage
-              ]
-          , H.button [ A.onClick SendMessage ] [ H.text "send" ]
+      [ CG.style [ CG.body [ C.margin "0" ] ]
+      , H.divS
+          [ C.display "flex" ]
+          []
+          [ threadBar model
+          , threadView model
           ]
       ]
   }
 
-      -- (let
-      --    threadView :: Thread Message -> Html Action
-      --    threadView =
-      --      Array.fromFoldable
-      --      >>> map
-      --            (\(message /\ siblings) ->
-      --               let
-      --                 createMessage :: Styles -> Message -> Html Action
-      --                 createMessage styles mes =
-      --                   H.divS
-      --                     [ S.border "1px solid darkgray"
-      --                     , styles
-      --                     ]
-      --                     []
-      --                     [ H.divS
-      --                         [ S.fontSize "0.75em"
-      --                         , S.fontStyle "italic"
-      --                         , S.opacity "0.5"
-      --                         , S.marginBottom "0.5em"
-      --                         , S.paddingTop "1px"
-      --                         ]
-      --                         []
-      --                         [ H.text "Mason" ]
-      --                     , H.div [] [ H.text mes.content ]
-      --                     ]
-      --               in
-      --               batch
-      --               $ Array.snoc
-      --                   (siblings <#> createMessage (S.background "lightgray"))
-      --                   (createMessage (S.background "white") message)
-      --               # Array.reverse
-      --            )
-      --      >>> H.divS
-      --            [ S.border "1px solid"
-      --            , S.maxHeight "300px"
-      --            , S.overflow "auto"
-      --            , S.display "flex"
-      --            , S.flexDirection "column-reverse"
-      --            ]
-      --            []
-      --  in
-      --  H.divS
-      --    [ S.position "absolute"
-      --    , S.width "30%"
-      --    , S.top "0"
-      --    , S.left "0"
-      --    , S.border "1px solid black"
-      --    , S.zIndex "1"
-      --    , S.overflow "auto"
-      --    , S.height "100%"
-      --    ]
-      --    []
-      --  $ (let
-      --       { names, messages } =
-      --         Debug.log $ processEvents model.convo.events ::
-      --           { names :: Map (Id "User") String
-      --           , messages :: TreeMap (Id "Message") Message
-      --           }
+threadBar :: Model -> Html Msg
+threadBar model =
+  let
+    leaves :: Array (Id "Message")
+    leaves =
+      TreeMap.leaves model.state.messages
+      # Array.sortBy
+          (\a b ->
+            compare
+              ((snd b).value).timeSent
+              ((snd a).value).timeSent
+          )
+      <#> fst
+  in
+  H.divS [] []
+    [ H.button
+        [ A.onClick NewThread ]
+        [ H.text "New Thread" ]
+    , H.divS [ C.margin ".3em" ] []
+        [ H.text "Name: "
+        , H.input []
+        ]
+    , batch
+      $ leaves
+      <#> \mid ->
+            TreeMap.lookup mid model.state.messages
+            # maybe "oops" (_.value .> _.content)
+            # \mes ->
+                H.divS
+                  [ if model.selectedThreadRoot == Just mid then
+                      C.background "red"
+                    else
+                      mempty
+                  , C.border "1px solid"
+                  , C.padding ".3em"
+                  ]
+                  [ A.onClick $ SelectThreadRoot mid ]
+                  [ H.text mes ]
+    ]
 
-      --       threads :: Array (Thread Message)
-      --       threads =
-      --         Debug.log
-      --         $ Tree.getThreads messages
-      --         # Array.sortBy
-      --             \a b ->
-      --               compare
-      --                 (fst $ NEList.head b).timeSent
-      --                 (fst $ NEList.head a).timeSent
-      --     in
-      --     threadView <$> threads
-      --    )
+inputId :: String
+inputId = "input"
+
+threadView :: Model -> Html Msg
+threadView model =
+  let
+    mthread :: Maybe (Thread Message)
+    mthread =
+      model.selectedThreadRoot
+      >>= TreeMap.getThread ~$ model.state.messages
+
+    messageInput :: Html Msg
+    messageInput =
+      H.div []
+        [ H.input
+            [ A.id inputId
+            , A.value model.currentMessage
+            , A.onInput UpdateMessage
+            ]
+        , H.button [ A.onClick SendMessage ] [ H.text "send" ]
+        ]
+  in
+  case mthread of
+    Just thread ->
+      Array.fromFoldable thread
+      # map
+          (\(message /\ siblings) ->
+             let
+               createMessage :: Styles -> Message -> Html Msg
+               createMessage styles mes =
+                 H.divS
+                   [ C.borderJ
+                       [ "1px solid"
+                       , if model.messageParent == Just mes.id then
+                          "red"
+                        else
+                          "darkgray"
+                       ]
+                   , styles
+                   ]
+                   [ A.onClick $ SelectMessageParent mes.id ]
+                   [ H.divS
+                       [ C.fontSize "0.75em"
+                       , C.fontStyle "italic"
+                       , C.opacity "0.5"
+                       , C.marginBottom "0.5em"
+                       , C.paddingTop "1px"
+                       ]
+                       []
+                       [ H.text "Mason" ]
+                   , H.div [] [ H.text mes.content ]
+                   ]
+             in
+             batch
+             $ Array.snoc
+                 (siblings <#> createMessage (C.background "lightgray"))
+                 (createMessage (C.background "white") message)
+             # Array.reverse
+          )
+      # \messagesHtml ->
+          H.divS
+            [ C.maxHeight "100vh"
+            , C.display "grid"
+            ]
+            []
+            [ H.divS
+                [ C.border "1px solid"
+                , C.overflow "auto"
+                , C.display "flex"
+                , C.flexDirection "column-reverse"
+                ]
+                []
+                messagesHtml
+            , messageInput
+            ]
+
+    Nothing -> messageInput
