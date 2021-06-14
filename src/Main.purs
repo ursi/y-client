@@ -441,6 +441,7 @@ threadBar model =
                       mempty
                   , C.border "1px solid"
                   , C.padding ".3em"
+                  , C.whiteSpace "pre-wrap"
                   ]
                   [ A.onClick $ SelectThreadRoot mid ]
                   [ H.text mes ]
