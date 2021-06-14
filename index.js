@@ -8451,7 +8451,7 @@ var PS = {};
       }))(function (v1) {
           return Control_Bind.bind(Control_Monad_Writer_Trans.bindWriterT(Platform["$_SemigroupCmd_9"])(Effect.bindEffect))(Effect_Class.liftEffect(Control_Monad_Writer_Trans.monadEffectWriter(Platform["$_MonoidCmd_10"])(Effect_Class.monadEffectEffect))($foreign.getHostname))(function (hostname) {
               return Control_Bind.bind(Control_Monad_Writer_Trans.bindWriterT(Platform["$_SemigroupCmd_9"])(Effect.bindEffect))(Effect_Class.liftEffect(Control_Monad_Writer_Trans.monadEffectWriter(Platform["$_MonoidCmd_10"])(Effect_Class.monadEffectEffect))(Y_Client_WebSocket.newConnection({
-                  url: "ws://y.maynards.site:8081"
+                  url: "wss://y.maynards.site:8081"
               })))(function (wsClient) {
                   return Control_Bind.discard(Control_Bind.discardUnit)(Control_Monad_Writer_Trans.bindWriterT(Platform["$_SemigroupCmd_9"])(Effect.bindEffect))(Control_Monad_Writer_Class.tell(Control_Monad_Writer_Trans.monadTellWriterT(Platform["$_MonoidCmd_10"])(Effect.monadEffect))(function (msgCallback) {
                       return Y_Client_WebSocket.onOpen(function __do() {
