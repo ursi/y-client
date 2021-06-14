@@ -49,12 +49,15 @@
              make-shell
                { packages =
                    with pkgs;
-                   [ nodejs
+                   [ entr
+                     nodejs
                      nodePackages.live-server
                      purs-nix.purescript
                      purs-nix.purescript-language-server
                      (command {})
                    ];
+
+                 aliases.watch = "find src | entr -s 'echo bundling; purs-nix bundle'";
                };
          }
       )

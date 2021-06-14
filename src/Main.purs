@@ -12,6 +12,7 @@ import Data.Map (Map)
 import Data.Map as Map
 import Data.Set as Set
 import Debug as Debug
+import Design as Ds
 import Html (Html)
 import Html as H
 import Platform (Cmd(..), Program, Update, afterRender, batch, tell)
@@ -232,7 +233,16 @@ update model@{ userId, convoId } =
           messages :: TreeMap (Id "Message") Message
           messages = processedEvents.messages
 
-          model2 = model { state = { events: newEvents, names, messages } }
+          model2 =
+            model
+              { state = { events: newEvents, names, messages }
+              , nameInput =
+                  if model.nameInput == "" then
+                    Map.lookup userId names
+                    # fromMaybe ""
+                  else
+                    model.nameInput
+              }
         in
         case model.selectedThreadRoot of
           Just mid ->
@@ -375,7 +385,7 @@ view ::
 view model =
   { head: []
   , body:
-      [ CG.style [ CG.body [ C.margin "0" ] ]
+      [ Ds.staticStyles
       , H.divS
           [ C.display "grid"
           , C.grid "100vh / 30% 1fr"
@@ -409,7 +419,10 @@ threadBar model =
     [ H.div []
         [ H.button [ A.onClick NewThread ] [ H.text "New Thread" ]
         , H.divS [ C.margin ".3em" ] []
-            [ H.input [ A.onInput UpdateNameInput ]
+            [ H.input
+                [ A.value model.nameInput
+                , A.onInput UpdateNameInput
+                ]
             , H.button [ A.onClick UpdateName ] [ H.text "Update Name"]
             ]
         ]
@@ -447,11 +460,12 @@ threadView model =
     messageInput :: Html Msg
     messageInput =
       H.div []
-        [ H.input
+        [ H.textarea
             [ A.id inputId
             , A.value model.currentMessage
             , A.onInput UpdateMessage
             ]
+            []
         , H.button [ A.onClick SendMessage ] [ H.text "send" ]
         ]
   in
@@ -471,12 +485,12 @@ threadView model =
                         else
                           "darkgray"
                        ]
+                   , C.padding ".25em"
                    , styles
                    ]
                    [ A.onClick $ SelectMessageParent mes.id ]
                    [ H.divS
-                       [ C.fontSize "0.75em"
-                       , C.fontStyle "italic"
+                       [ C.font "0.7em sans-serif"
                        , C.opacity "0.5"
                        , C.marginBottom "0.5em"
                        , C.paddingTop "1px"
@@ -486,7 +500,7 @@ threadView model =
                          $ Map.lookup mes.authorId model.state.names
                          # fromMaybe "<anonomous>"
                        ]
-                   , H.div [] [ H.text mes.content ]
+                   , H.divS [ C.whiteSpace "pre-wrap" ] [] [ H.text mes.content ]
                    ]
              in
              batch
