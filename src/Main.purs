@@ -568,10 +568,14 @@ inputWithHeight =
 detectSendMessage :: Attribute Msg
 detectSendMessage =
   A.on "keydown"
-    $ HTML.toMaybeKeyboardEvent
-    .> maybe (pure NoOp) \kbe ->
-        if HTML.key kbe == "Enter" && (HTML.ctrlKey kbe || HTML.metaKey kbe || HTML.shiftKey kbe) then do
-          HTML.preventDefault kbe
-          pure SendMessage
-        else
-          pure NoOp
+  $ HTML.toMaybeKeyboardEvent
+  .> maybe (pure NoOp)
+       \kbe ->
+         if
+           HTML.key kbe == "Enter"
+           && (HTML.ctrlKey kbe || HTML.metaKey kbe || HTML.shiftKey kbe)
+         then do
+           HTML.preventDefault kbe
+           pure SendMessage
+         else
+           pure NoOp
