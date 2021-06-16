@@ -397,7 +397,7 @@ view model =
       [ Ds.staticStyles
       , H.divS
           [ C.display "grid"
-          , C.grid "100vh / 30% 1fr"
+          , C.grid "100vh / min(30%, 350px) 1fr"
           ]
           []
           [ H.divS [ Ds.panel ] []
