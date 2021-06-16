@@ -400,11 +400,24 @@ view model =
           , C.grid "100vh / 30% 1fr"
           ]
           []
-          [ threadBar model
+          [ H.divS [ Ds.panel ] []
+              [ nameChanger model
+              , threadBar model
+              ]
           , threadView model
           ]
       ]
   }
+
+nameChanger :: Model -> Html Msg
+nameChanger model =
+  H.divS [ C.margin ".3em" ] []
+    [ H.input
+        [ A.value model.nameInput
+        , A.onInput UpdateNameInput
+        ]
+    , H.button [ A.onClick UpdateName ] [ H.text "Update Name"]
+    ]
 
 threadBar :: Model -> Html Msg
 threadBar model =
@@ -420,17 +433,9 @@ threadBar model =
           )
       <#> fst
   in
-  H.divS [ Ds.panel ] []
-    [ H.div []
-        [ H.button [ A.onClick NewThread ] [ H.text "New Thread" ]
-        , H.divS [ C.margin ".3em" ] []
-            [ H.input
-                [ A.value model.nameInput
-                , A.onInput UpdateNameInput
-                ]
-            , H.button [ A.onClick UpdateName ] [ H.text "Update Name"]
-            ]
-        ]
+  batch
+    [ H.divS [ C.margin "5px" ] []
+        [ H.button [ A.onClick NewThread ] [ H.text "New Thread" ] ]
     , H.divS
         [ C.overflow "auto" ]
         []
