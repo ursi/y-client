@@ -2,6 +2,7 @@ module Main where
 
 import MasonPrelude
 
+import Attribute (Attribute)
 import Attribute as A
 import Css (Styles)
 import Css as C
@@ -21,7 +22,8 @@ import Sub (Sub)
 import TreeMap (IVP, Thread, TreeMap, toTreeMap)
 import TreeMap as TreeMap
 import WebSocketSub (wsToSub)
-import WHATWG.HTML.All (document, focus, toMaybeHTMLElement, getElementById, window)
+import WHATWG.HTML.All as HTML
+import WHATWG.HTML.HTMLTextAreaElement as TextArea
 import Y.Client.WebSocket (Client)
 import Y.Client.WebSocket as Ws
 import Y.Shared.Config as Config
@@ -50,7 +52,7 @@ type Model =
   , userId :: Id "User"
   , wsClient :: Client ToServer ToClient
   , state :: State
-  , currentMessage :: String
+  , inputBox :: InputBox
   , selectedThreadRoot :: Maybe (Id "Message")
   , messageParent :: Maybe (Id "Message")
   , nameInput :: String
@@ -96,7 +98,7 @@ init _ = do
         , messages: TreeMap.empty
         , names: Map.empty
         }
-    , currentMessage: ""
+    , inputBox: defaultInputBox
     , selectedThreadRoot: Nothing
     , messageParent: Nothing
     , nameInput: ""
@@ -105,17 +107,18 @@ init _ = do
 data Msg
   = WebSocketOpened
   | TransmissionReceived (Maybe ToClient)
-  | UpdateMessage String
+  | UpdateInputBox InputBox
   | SendMessage
   | SelectThreadRoot (Id "Message")
   | NewThread
   | SelectMessageParent (Id "Message")
   | UpdateNameInput String
   | UpdateName
+  | NoOp
 
 instance Eq Msg where
   eq m1 m2 = case m1, m2 of
-    UpdateMessage s1, UpdateMessage s2 -> s1 == s2
+    UpdateInputBox i1, UpdateInputBox i2 -> i1 == i2
     SendMessage, SendMessage -> true
     WebSocketOpened, WebSocketOpened -> true
     SelectThreadRoot mid1, SelectThreadRoot mid2 -> mid1 == mid2
@@ -123,7 +126,16 @@ instance Eq Msg where
     SelectMessageParent mid1, SelectMessageParent mid2 -> mid1 == mid2
     UpdateNameInput s1, UpdateNameInput s2 -> s1 == s2
     UpdateName, UpdateName -> true
+    NoOp, NoOp -> true
     _, _ -> false
+
+type InputBox =
+  { content :: String
+  , height :: Number
+  }
+
+defaultInputBox :: InputBox
+defaultInputBox = { content: "", height: 30.0 }
 
 update :: Model -> Msg -> Update Msg Model
 update model@{ userId, convoId } =
@@ -132,10 +144,10 @@ update model@{ userId, convoId } =
 
     focusInput =
       afterRender
-      $ window
-        >>= document
-        >>= getElementById inputId .> map toMaybeHTMLElement
-        >>= maybe (pure unit) (focus {})
+      $ HTML.window
+        >>= HTML.document
+        >>= HTML.getElementById inputId .> map HTML.toMaybeHTMLElement
+        >>= maybe (pure unit) (HTML.focus {})
   in
   case _ of
     UpdateName -> do
@@ -179,7 +191,7 @@ update model@{ userId, convoId } =
     SendMessage -> do
       focusInput
 
-      if model.currentMessage /= "" then
+      if model.inputBox.content /= "" then
         do
           id :: Id "Message" <- liftEffect Id.new
 
@@ -197,25 +209,25 @@ update model@{ userId, convoId } =
                           model.messageParent
                           <#> Set.singleton
                           # fromMaybe mempty
-                      , content: model.currentMessage
+                      , content: model.inputBox.content
                       }
                   }
 
           pure
             (model
-              { currentMessage = ""
-              , messageParent = Nothing
-              , selectedThreadRoot =
-                  case model.selectedThreadRoot of
-                    Nothing -> Just id
-                    _ -> model.selectedThreadRoot
-              }
+               { inputBox = defaultInputBox
+               , messageParent = Nothing
+               , selectedThreadRoot =
+                   case model.selectedThreadRoot of
+                     Nothing -> Just id
+                     _ -> model.selectedThreadRoot
+               }
             )
       else
         pure model
 
-    UpdateMessage str ->
-      let model2 = model { currentMessage = str } in
+    UpdateInputBox ib ->
+      let model2 = model { inputBox = ib } in
 
       case model.selectedThreadRoot, model.messageParent of
         Just _, Nothing -> pure $ model2 { messageParent = model.selectedThreadRoot }
@@ -251,7 +263,7 @@ update model@{ userId, convoId } =
             $ model2
                 { selectedThreadRoot = mleaf
                 , messageParent =
-                    if model.currentMessage == "" then
+                    if model.inputBox.content == "" then
                       mleaf
                     else
                       model.messageParent
@@ -266,6 +278,9 @@ update model@{ userId, convoId } =
         Ws.transmit (ToServer_Subscribe { userId, convoId }) model.wsClient
         Ws.transmit (ToServer_Pull { convoId }) model.wsClient
       pure model
+
+    NoOp -> pure model
+
 
 pushEvent :: ∀ a r.
   { convoId :: Id "Convo"
@@ -411,11 +426,7 @@ threadBar model =
           )
       <#> fst
   in
-  H.divS
-    [ C.display "grid"
-    , C.gridTemplateRows "max-content"
-    ]
-    []
+  H.divS [ Ds.panel ] []
     [ H.div []
         [ H.button [ A.onClick NewThread ] [ H.text "New Thread" ]
         , H.divS [ C.margin ".3em" ] []
@@ -436,7 +447,7 @@ threadBar model =
             # \mes ->
                 H.divS
                   [ if model.selectedThreadRoot == Just mid then
-                      C.background "red"
+                      C.background Ds.vars.red1
                     else
                       mempty
                   , C.border "1px solid"
@@ -461,13 +472,18 @@ threadView model =
     messageInput :: Html Msg
     messageInput =
       H.div []
-        [ H.textarea
+        [ H.textareaS
+            [ C.height $ C.px  model.inputBox.height
+            , C.width "100%"
+            , C.borderWidth $ C.px Ds.inputBoxBorderWidth
+            , C.padding ".45em"
+            ]
             [ A.id inputId
-            , A.value model.currentMessage
-            , A.onInput UpdateMessage
+            , A.value model.inputBox.content
+            , inputWithHeight
+            , detectSendMessage
             ]
             []
-        , H.button [ A.onClick SendMessage ] [ H.text "send" ]
         ]
   in
   case mthread of
@@ -479,14 +495,9 @@ threadView model =
                createMessage :: Styles -> Message -> Html Msg
                createMessage styles mes =
                  H.divS
-                   [ C.borderJ
-                       [ "1px solid"
-                       , if model.messageParent == Just mes.id then
-                          "red"
-                        else
-                          "darkgray"
-                       ]
+                   [ C.border "1px solid darkgray"
                    , C.padding ".25em"
+                   , C.position "relative"
                    , styles
                    ]
                    [ A.onClick $ SelectMessageParent mes.id ]
@@ -502,6 +513,19 @@ threadView model =
                          # fromMaybe "<anonomous>"
                        ]
                    , H.divS [ C.whiteSpace "pre-wrap" ] [] [ H.text mes.content ]
+                   , if model.messageParent == Just mes.id then
+                       H.divS
+                         [ C.position "absolute"
+                         , C.background Ds.vars.red1
+                         , C.width "20px"
+                         , C.height "100%"
+                         , C.top "0"
+                         , C.right "0"
+                         ]
+                         []
+                         []
+                    else
+                      mempty
                    ]
              in
              batch
@@ -511,11 +535,7 @@ threadView model =
              # Array.reverse
           )
       # \messagesHtml ->
-          H.divS
-            [ C.display "grid"
-            , C.gridTemplateRows "max-content"
-            ]
-            []
+          H.divS [ Ds.panel ] []
             [ H.divS
                 [ C.border "1px solid"
                 , C.overflow "auto"
@@ -528,3 +548,34 @@ threadView model =
             ]
 
     Nothing -> messageInput
+
+inputWithHeight :: Attribute Msg
+inputWithHeight =
+  A.on "input"
+  $ HTML.unsafeTarget
+  .> HTML.toMaybeHTMLTextAreaElement
+  .> maybe (pure NoOp) \elem ->
+      lift2
+        (\content height ->
+           UpdateInputBox
+             { content
+             , height: height + 2.0 * Ds.inputBoxBorderWidth
+             }
+        )
+        (TextArea.value elem)
+        (toNumber <$> HTML.scrollHeight elem)
+
+detectSendMessage :: Attribute Msg
+detectSendMessage =
+  A.on "keydown"
+  $ HTML.toMaybeKeyboardEvent
+  .> maybe (pure NoOp)
+       \kbe ->
+         if
+           HTML.key kbe == "Enter"
+           && (HTML.ctrlKey kbe || HTML.metaKey kbe || HTML.shiftKey kbe)
+         then do
+           HTML.preventDefault kbe
+           pure SendMessage
+         else
+           pure NoOp
