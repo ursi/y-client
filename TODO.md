@@ -1,0 +1,2 @@
+- add diff and absolute timestamps
+- add the ability to click on siblings and explore their subtrees

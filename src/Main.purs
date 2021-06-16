@@ -1,4 +1,4 @@
-module Main where
+module Main (main) where
 
 import MasonPrelude
 
@@ -6,7 +6,6 @@ import Attribute (Attribute)
 import Attribute as A
 import Css (Styles)
 import Css as C
-import Css.Global as CG
 import Data.Array as Array
 import Data.List ((:))
 import Data.Map (Map)
@@ -66,28 +65,21 @@ type State =
 
 init :: Unit -> Update Msg Model
 init _ = do
-  -- Initialize state
   userId /\ convoId <- liftEffect do
     freshUserId /\ freshConvoId <- liftEffect $ lift2 Tuple Id.new Id.new
     initialize_f Tuple freshUserId freshConvoId
 
-  -- Spin up websocket
-  hostname <- liftEffect getHostname
   wsClient <-
     liftEffect
-    -- $ Ws.newConnection { url: "ws://" <> hostname <> ":" <> show Config.webSocketPort }
     $ Ws.newConnection { url: "wss://y.maynards.site:8081" }
 
   tell
-    $ Cmd
-        (\msgCallback -> do
-           Ws.onOpen
-             (do
-                log "WebSocket opened"
-                msgCallback WebSocketOpened
-             )
-             wsClient
-        )
+    (Cmd
+       \msgCallback -> do
+         Ws.onOpen
+           (msgCallback WebSocketOpened)
+           wsClient
+    )
 
   pure
     { convoId
@@ -403,14 +395,27 @@ view model =
       [ Ds.staticStyles
       , H.divS
           [ C.display "grid"
-          , C.grid "100vh / 30% 1fr"
+          , C.grid "100vh / min(30%, 350px) 1fr"
           ]
           []
-          [ threadBar model
+          [ H.divS [ Ds.panel ] []
+              [ nameChanger model
+              , threadBar model
+              ]
           , threadView model
           ]
       ]
   }
+
+nameChanger :: Model -> Html Msg
+nameChanger model =
+  H.divS [ C.margin ".3em" ] []
+    [ H.input
+        [ A.value model.nameInput
+        , A.onInput UpdateNameInput
+        ]
+    , H.button [ A.onClick UpdateName ] [ H.text "Update Name"]
+    ]
 
 threadBar :: Model -> Html Msg
 threadBar model =
@@ -426,17 +431,9 @@ threadBar model =
           )
       <#> fst
   in
-  H.divS [ Ds.panel ] []
-    [ H.div []
-        [ H.button [ A.onClick NewThread ] [ H.text "New Thread" ]
-        , H.divS [ C.margin ".3em" ] []
-            [ H.input
-                [ A.value model.nameInput
-                , A.onInput UpdateNameInput
-                ]
-            , H.button [ A.onClick UpdateName ] [ H.text "Update Name"]
-            ]
-        ]
+  batch
+    [ H.divS [ C.margin "5px" ] []
+        [ H.button [ A.onClick NewThread ] [ H.text "New Thread" ] ]
     , H.divS
         [ C.overflow "auto" ]
         []
@@ -502,9 +499,9 @@ threadView model =
                    ]
                    [ A.onClick $ SelectMessageParent mes.id ]
                    [ H.divS
-                       [ C.font "0.7em sans-serif"
-                       , C.opacity "0.5"
-                       , C.marginBottom "0.5em"
+                       [ C.font "0.72em sans-serif"
+                       , C.opacity "0.6"
+                       , C.marginBottom "0.7em"
                        , C.paddingTop "1px"
                        ]
                        []
