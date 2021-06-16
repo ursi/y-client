@@ -1,4 +1,4 @@
-module Main where
+module Main (main) where
 
 import MasonPrelude
 
@@ -6,7 +6,6 @@ import Attribute (Attribute)
 import Attribute as A
 import Css (Styles)
 import Css as C
-import Css.Global as CG
 import Data.Array as Array
 import Data.List ((:))
 import Data.Map (Map)
@@ -66,28 +65,23 @@ type State =
 
 init :: Unit -> Update Msg Model
 init _ = do
-  -- Initialize state
   userId /\ convoId <- liftEffect do
     freshUserId /\ freshConvoId <- liftEffect $ lift2 Tuple Id.new Id.new
     initialize_f Tuple freshUserId freshConvoId
 
-  -- Spin up websocket
-  hostname <- liftEffect getHostname
   wsClient <-
-    liftEffect
-    $ Ws.newConnection { url: "ws://" <> hostname <> ":" <> show Config.webSocketPort }
-    -- $ Ws.newConnection { url: "ws://y.maynards.site:8081" }
+    liftEffect do
+      hostname <- getHostname
+      Ws.newConnection { url: "ws://" <> hostname <> ":" <> show Config.webSocketPort }
+      -- Ws.newConnection { url: "ws://y.maynards.site:8081" }
 
   tell
-    $ Cmd
-        (\msgCallback -> do
-           Ws.onOpen
-             (do
-                log "WebSocket opened"
-                msgCallback WebSocketOpened
-             )
-             wsClient
-        )
+    (Cmd
+       \msgCallback -> do
+         Ws.onOpen
+           (msgCallback WebSocketOpened)
+           wsClient
+    )
 
   pure
     { convoId
