@@ -501,9 +501,9 @@ threadView model =
                    ]
                    [ A.onClick $ SelectMessageParent mes.id ]
                    [ H.divS
-                       [ C.font "0.7em sans-serif"
-                       , C.opacity "0.5"
-                       , C.marginBottom "0.5em"
+                       [ C.font "0.72em sans-serif"
+                       , C.opacity "0.6"
+                       , C.marginBottom "0.7em"
                        , C.paddingTop "1px"
                        ]
                        []
