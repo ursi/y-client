@@ -30,7 +30,7 @@ panel :: Styles
 panel =
   batch
     [ C.display "grid"
-    , C.gridTemplateRows "fit-content(100%)"
+    , C.gridAutoRows "fit-content(100%)"
     ]
 
 inputBoxBorderWidth :: Number
