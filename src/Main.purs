@@ -510,7 +510,13 @@ threadView model =
                          $ Map.lookup mes.authorId model.state.names
                          # fromMaybe "<anonomous>"
                        ]
-                   , H.divS [ C.whiteSpace "pre-wrap" ] [] [ H.text mes.content ]
+                   , H.divS
+                       [ C.whiteSpace "pre-wrap"
+                       , C.position "relative"
+                       , C.zIndex "1"
+                       ]
+                       []
+                       [ H.text mes.content ]
                    , if model.messageParent == Just mes.id then
                        H.divS
                          [ C.position "absolute"
