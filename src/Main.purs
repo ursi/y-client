@@ -6,6 +6,7 @@ import Attribute (Attribute)
 import Attribute as A
 import Css (Styles)
 import Css as C
+import Css.Functions as CF
 import Data.Array as Array
 import Data.List ((:))
 import Data.Map (Map)
@@ -521,8 +522,13 @@ threadView model =
                    , if model.messageParent == Just mes.id then
                        H.divS
                          [ C.position "absolute"
-                         , C.background Ds.vars.red1
-                         , C.width "20px"
+                         , C.background
+                           $ CF.linearGradient
+                               [ "to right"
+                               , "transparent"
+                               , Ds.vars.red1
+                               ]
+                         , C.width "60px"
                          , C.height "100%"
                          , C.top "0"
                          , C.right "0"
