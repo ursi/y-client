@@ -451,6 +451,7 @@ threadBar model =
                   , C.border "1px solid"
                   , C.padding ".3em"
                   , C.whiteSpace "pre-wrap"
+                  , C.overflow "auto"
                   ]
                   [ A.onClick $ SelectThreadRoot mid ]
                   [ H.text mes ]
