@@ -510,7 +510,7 @@ threadView model =
                        []
                        [ H.text
                          $ Map.lookup mes.authorId model.state.names
-                         # fromMaybe "<anonomous>"
+                         # fromMaybe "<anonymous>"
                        ]
                    , H.divS
                        [ C.whiteSpace "pre-wrap"
