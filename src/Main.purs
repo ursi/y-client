@@ -501,7 +501,25 @@ threadView model =
                    , styles
                    ]
                    [ A.onClick $ SelectMessageParent mes.id ]
-                   [ H.divS
+                   [ if model.messageParent == Just mes.id then
+                       H.divS
+                         [ C.position "absolute"
+                         , C.background
+                           $ CF.linearGradient
+                               [ "to left"
+                               , "transparent"
+                               , Ds.vars.red1
+                               ]
+                         , C.width "15px"
+                         , C.height "100%"
+                         , C.top "0"
+                         , C.left "0"
+                         ]
+                         []
+                         []
+                     else
+                       mempty
+                   , H.divS
                        [ C.font "0.72em sans-serif"
                        , C.opacity "0.6"
                        , C.marginBottom "0.7em"
@@ -515,28 +533,9 @@ threadView model =
                    , H.divS
                        [ C.whiteSpace "pre-wrap"
                        , C.position "relative"
-                       , C.zIndex "1"
                        ]
                        []
                        [ H.text mes.content ]
-                   , if model.messageParent == Just mes.id then
-                       H.divS
-                         [ C.position "absolute"
-                         , C.background
-                           $ CF.linearGradient
-                               [ "to right"
-                               , "transparent"
-                               , Ds.vars.red1
-                               ]
-                         , C.width "60px"
-                         , C.height "100%"
-                         , C.top "0"
-                         , C.right "0"
-                         ]
-                         []
-                         []
-                    else
-                      mempty
                    ]
              in
              batch
