@@ -6,6 +6,7 @@ import Attribute (Attribute)
 import Attribute as A
 import Css (Styles)
 import Css as C
+import Css.Functions as CF
 import Data.Array as Array
 import Data.List ((:))
 import Data.Map (Map)
@@ -449,6 +450,7 @@ threadBar model =
                   , C.border "1px solid"
                   , C.padding ".3em"
                   , C.whiteSpace "pre-wrap"
+                  , C.overflow "auto"
                   ]
                   [ A.onClick $ SelectThreadRoot mid ]
                   [ H.text mes ]
@@ -497,7 +499,25 @@ threadView model =
                    , styles
                    ]
                    [ A.onClick $ SelectMessageParent mes.id ]
-                   [ H.divS
+                   [ if model.messageParent == Just mes.id then
+                       H.divS
+                         [ C.position "absolute"
+                         , C.background
+                           $ CF.linearGradient
+                               [ "to left"
+                               , "transparent"
+                               , Ds.vars.red1
+                               ]
+                         , C.width "15px"
+                         , C.height "100%"
+                         , C.top "0"
+                         , C.left "0"
+                         ]
+                         []
+                         []
+                     else
+                       mempty
+                   , H.divS
                        [ C.font "0.72em sans-serif"
                        , C.opacity "0.6"
                        , C.marginBottom "0.7em"
@@ -506,22 +526,14 @@ threadView model =
                        []
                        [ H.text
                          $ Map.lookup mes.authorId model.state.names
-                         # fromMaybe "<anonomous>"
+                         # fromMaybe "<anonymous>"
                        ]
-                   , H.divS [ C.whiteSpace "pre-wrap" ] [] [ H.text mes.content ]
-                   , if model.messageParent == Just mes.id then
-                       H.divS
-                         [ C.position "absolute"
-                         , C.background Ds.vars.red1
-                         , C.width "20px"
-                         , C.height "100%"
-                         , C.top "0"
-                         , C.right "0"
-                         ]
-                         []
-                         []
-                    else
-                      mempty
+                   , H.divS
+                       [ C.whiteSpace "pre-wrap"
+                       , C.position "relative"
+                       ]
+                       []
+                       [ H.text mes.content ]
                    ]
              in
              batch
