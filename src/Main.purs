@@ -581,10 +581,7 @@ detectSendMessage =
   $ HTML.toMaybeKeyboardEvent
   .> maybe (pure NoOp)
        \kbe ->
-         if
-           HTML.key kbe == "Enter"
-           && (HTML.ctrlKey kbe || HTML.metaKey kbe || HTML.shiftKey kbe)
-         then do
+         if HTML.key kbe == "Enter" && (HTML.ctrlKey kbe || HTML.metaKey kbe) then do
            HTML.preventDefault kbe
            pure SendMessage
          else
