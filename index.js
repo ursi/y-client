@@ -8977,17 +8977,15 @@ var PS = {};
               });
           };
           if (v2 instanceof SelectMessageParent) {
-              return Control_Bind.discard(Control_Bind.discardUnit)(Control_Monad_Writer_Trans.bindWriterT(Platform["$_SemigroupCmd_9"])(Effect.bindEffect))(focusInput)(function () {
-                  return Control_Applicative.pure(Control_Monad_Writer_Trans.applicativeWriterT(Platform["$_MonoidCmd_10"])(Effect.applicativeEffect))({
-                      messageParent: new Data_Maybe.Just(v2.value0),
-                      convoId: v.convoId,
-                      inputBox: v.inputBox,
-                      nameInput: v.nameInput,
-                      selectedThreadRoot: v.selectedThreadRoot,
-                      state: v.state,
-                      userId: v.userId,
-                      wsClient: v.wsClient
-                  });
+              return Control_Applicative.pure(Control_Monad_Writer_Trans.applicativeWriterT(Platform["$_MonoidCmd_10"])(Effect.applicativeEffect))({
+                  messageParent: new Data_Maybe.Just(v2.value0),
+                  convoId: v.convoId,
+                  inputBox: v.inputBox,
+                  nameInput: v.nameInput,
+                  selectedThreadRoot: v.selectedThreadRoot,
+                  state: v.state,
+                  userId: v.userId,
+                  wsClient: v.wsClient
               });
           };
           if (v2 instanceof NewThread) {
@@ -9130,12 +9128,12 @@ var PS = {};
                   if (v.selectedThreadRoot instanceof Data_Maybe.Nothing) {
                       return Control_Applicative.pure(Control_Monad_Writer_Trans.applicativeWriterT(Platform["$_MonoidCmd_10"])(Effect.applicativeEffect))(model2);
                   };
-                  throw new Error("Failed pattern match at Main (line 251, column 9 - line 264, column 33): " + [ v.selectedThreadRoot.constructor.name ]);
+                  throw new Error("Failed pattern match at Main (line 250, column 9 - line 263, column 33): " + [ v.selectedThreadRoot.constructor.name ]);
               };
               if (v2.value0 instanceof Data_Maybe.Nothing) {
                   return Control_Applicative.pure(Control_Monad_Writer_Trans.applicativeWriterT(Platform["$_MonoidCmd_10"])(Effect.applicativeEffect))(v);
               };
-              throw new Error("Failed pattern match at Main (line 228, column 33 - line 266, column 28): " + [ v2.value0.constructor.name ]);
+              throw new Error("Failed pattern match at Main (line 227, column 33 - line 265, column 28): " + [ v2.value0.constructor.name ]);
           };
           if (v2 instanceof WebSocketOpened) {
               return Control_Bind.discard(Control_Bind.discardUnit)(Control_Monad_Writer_Trans.bindWriterT(Platform["$_SemigroupCmd_9"])(Effect.bindEffect))(Effect_Class.liftEffect(Control_Monad_Writer_Trans.monadEffectWriter(Platform["$_MonoidCmd_10"])(Effect_Class.monadEffectEffect))(function __do() {
@@ -9153,7 +9151,7 @@ var PS = {};
           if (v2 instanceof NoOp) {
               return Control_Applicative.pure(Control_Monad_Writer_Trans.applicativeWriterT(Platform["$_MonoidCmd_10"])(Effect.applicativeEffect))(v);
           };
-          throw new Error("Failed pattern match at Main (line 144, column 3 - line 274, column 23): " + [ v2.constructor.name ]);
+          throw new Error("Failed pattern match at Main (line 144, column 3 - line 273, column 23): " + [ v2.constructor.name ]);
       };
   };
   var $dollar_EqMsg_32 = new Data_Eq.Eq(function (m1) {
@@ -9243,7 +9241,7 @@ var PS = {};
       if (mthread instanceof Data_Maybe.Nothing) {
           return messageInput;
       };
-      throw new Error("Failed pattern match at Main (line 486, column 3 - line 547, column 28): " + [ mthread.constructor.name ]);
+      throw new Error("Failed pattern match at Main (line 485, column 3 - line 546, column 28): " + [ mthread.constructor.name ]);
   };
   var view = function (model) {
       return {
