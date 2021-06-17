@@ -159,7 +159,6 @@ update model@{ userId, convoId } =
     UpdateNameInput str -> pure $ model { nameInput = str }
 
     SelectMessageParent mid -> do
-      focusInput
       pure $ model { messageParent = Just mid }
 
     NewThread -> do
