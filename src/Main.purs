@@ -26,7 +26,6 @@ import WHATWG.HTML.All as HTML
 import WHATWG.HTML.HTMLTextAreaElement as TextArea
 import Y.Client.WebSocket (Client)
 import Y.Client.WebSocket as Ws
-import Y.Shared.Config as Config
 import Y.Shared.Event (Event(..), EventPayload(..))
 import Y.Shared.Id (Id)
 import Y.Shared.Id as Id
@@ -73,7 +72,7 @@ init _ = do
   wsClient <-
     liftEffect do
       hostname <- getHostname
-      Ws.newConnection { url: "ws://" <> hostname <> ":" <> show Config.webSocketPort }
+      Ws.newConnection { url: "ws://" <> hostname <> ":8081" }
       -- Ws.newConnection { url: "ws://y.maynards.site:8081" }
 
   tell
@@ -199,6 +198,7 @@ update model@{ userId, convoId } =
                       , timeSent: instant
                       , authorId: model.userId
                       , convoId
+                      , deleted: false
                       , depIds:
                           model.messageParent
                           <#> Set.singleton
