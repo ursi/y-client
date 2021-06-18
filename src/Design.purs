@@ -15,7 +15,10 @@ import Css.Variables (mkVarStyles, mkVarValues)
 import Html (Html)
 import Platform (batch)
 
-varRec = { red1: "#ff9e9e" }
+varRec =
+  { borderWidth1: "1px"
+  , red1: "#ff9e9e"
+  }
 
 vars = mkVarValues {} varRec
 

@@ -438,7 +438,7 @@ threadBar model =
         [ H.button [ A.onClick NewThread ] [ H.text "New Thread" ] ]
     , H.divS
         [ C.overflow "auto"
-        , C.border "1px solid"
+        , C.borderJ [ Ds.vars.borderWidth1, "solid" ]
         ]
         []
       $ leaves
@@ -476,7 +476,7 @@ threadView model =
       H.div []
         [ H.textareaS
             [ C.height $ C.px  model.inputBox.height
-            , C.width "100%"
+            , C.width $ CF.calc $ CF.add "100%" Ds.vars.borderWidth1
             , C.borderWidth $ C.px Ds.inputBoxBorderWidth
             , C.padding ".45em"
             ]
@@ -549,14 +549,18 @@ threadView model =
       # \messagesHtml ->
           H.divS
             [ Ds.panel
-            , C.transform $ CF.translateX "-1px"
+            , C.transform
+              $ CF.translateX
+              $ CF.calc
+              $ CF.sub "0px" Ds.vars.borderWidth1
             ]
             []
             [ H.divS
-                [ C.border "1px solid"
+                [ C.borderJ [ Ds.vars.borderWidth1, "solid" ]
                 , C.overflow "auto"
                 , C.display "flex"
                 , C.flexDirection "column-reverse"
+                , C.width $ CF.calc $ CF.sub "100%" Ds.vars.borderWidth1
                 ]
                 []
                 messagesHtml
