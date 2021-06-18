@@ -5804,7 +5804,8 @@ var PS = {};
       };
   };                      
   var declaration = PointFree.compose2(Control_Applicative.pure(Data_Batched["$_ApplicativeBatched_5"](Data_Identity.applicativeIdentity)))(VirtualDom_Css.Declaration.create(VirtualDom_Css.Id.value));
-  var display = declaration("display");     
+  var display = declaration("display");
+  var flex = declaration("flex");           
   var flexDirection = declaration("flex-direction");
   var font = declaration("font");
   var fontFamily = declaration("font-family");                             
@@ -5814,7 +5815,8 @@ var PS = {};
   var left = declaration("left");                    
   var margin = declaration("margin");                      
   var marginBottom = declaration("margin-bottom");
-  var opacity = declaration("opacity");           
+  var opacity = declaration("opacity");
+  var outline = declaration("outline");           
   var overflow = declaration("overflow");                        
   var padding = declaration("padding");           
   var paddingTop = declaration("padding-top");      
@@ -5852,6 +5854,7 @@ var PS = {};
   exports["borderTop"] = borderTop;
   exports["borderWidth"] = borderWidth;
   exports["display"] = display;
+  exports["flex"] = flex;
   exports["flexDirection"] = flexDirection;
   exports["font"] = font;
   exports["fontFamily"] = fontFamily;
@@ -5862,6 +5865,7 @@ var PS = {};
   exports["margin"] = margin;
   exports["marginBottom"] = marginBottom;
   exports["opacity"] = opacity;
+  exports["outline"] = outline;
   exports["overflow"] = overflow;
   exports["padding"] = padding;
   exports["paddingTop"] = paddingTop;
@@ -7893,12 +7897,10 @@ var PS = {};
       };
   };                                                    
   var input = PointFree.applySecond(element("input"))([  ]);
-  var divS = elementS("div");
-  var div = element("div");        
+  var divS = elementS("div");      
   var button = element("button");
   exports["text"] = text;
   exports["button"] = button;
-  exports["div"] = div;
   exports["divS"] = divS;
   exports["input"] = input;
   exports["textareaS"] = textareaS;
@@ -9374,16 +9376,13 @@ var PS = {};
   };
   var threadView = function (model) {
       var mthread = Control_Bind.bind(Data_Maybe.bindMaybe)(model.selectedThreadRoot)(PointFree.applySecond(TreeMap.getThread(Y_Shared_Id.ordId))(model.state.messages));
-      var messageInput = Html.div([  ])([ Html.textareaS([ Css.height(Css.px(model.inputBox.height)), Css.width(Css_Functions.calc(Css_Functions.add("100%")(Design.vars.borderWidth1))), Css.borderWidth(Css.px(Design.inputBoxBorderWidth)), Css.padding(".45em") ])([ Attribute.id(inputId), Attribute.value(model.inputBox.content), inputWithHeight, detectSendMessage ])([  ]) ]);
-      if (mthread instanceof Data_Maybe.Just) {
-          return (function (messagesHtml) {
-              return Html.divS([ Design.panel, Css.transform(Css_Functions.translateX(Css_Functions.calc(Css_Functions.sub("0px")(Design.vars.borderWidth1)))) ])([  ])([ Html.divS([ Css.borderJ([ Design.vars.borderWidth1, "solid" ]), Css.overflow("auto"), Css.display("flex"), Css.flexDirection("column-reverse"), Css.width(Css_Functions.calc(Css_Functions.sub("100%")(Design.vars.borderWidth1))) ])([  ])(messagesHtml), messageInput ]);
-          })(Data_Functor.map(Data_Functor.functorArray)(function (v) {
+      var messageList = (function () {
+          var $120 = Data_Functor.map(Data_Functor.functorArray)(function (v) {
               var createMessage = function (styles) {
                   return function (mes) {
                       return Html.divS([ Design.following([ Css.borderBottom("1px solid") ]), Css.padding(".25em"), Css.position("relative"), styles ])([ Attribute.onClick(Producer.producea($dollar_EqMsg_32))(new SelectMessageParent(mes.id)) ])([ (function () {
-                          var $103 = Data_Eq.eq(Data_Maybe.eqMaybe(Y_Shared_Id.eqId))(model.messageParent)(new Data_Maybe.Just(mes.id));
-                          if ($103) {
+                          var $102 = Data_Eq.eq(Data_Maybe.eqMaybe(Y_Shared_Id.eqId))(model.messageParent)(new Data_Maybe.Just(mes.id));
+                          if ($102) {
                               return Html.divS([ Css.position("absolute"), Css.background(Css_Functions.linearGradient([ "to left", "transparent", Design.vars.red1 ])), Css.width("15px"), Css.height("100%"), Css.top("0"), Css.left("0") ])([  ])([  ]);
                           };
                           return Data_Monoid.mempty(Data_Batched["$_MonoidBatched_7"]);
@@ -9391,12 +9390,24 @@ var PS = {};
                   };
               };
               return Platform.batch(Data_Array.reverse(Data_Array.snoc(Data_Functor.mapFlipped(Data_Functor.functorArray)(v.value1)(createMessage(Css.background("lightgray"))))(createMessage(Css.background("white"))(v.value0))));
-          })(Data_Array.fromFoldable(Data_List_Types.foldableNonEmptyList)(mthread.value0)));
-      };
-      if (mthread instanceof Data_Maybe.Nothing) {
-          return messageInput;
-      };
-      throw new Error("Failed pattern match at Main (line 489, column 3 - line 568, column 28): " + [ mthread.constructor.name ]);
+          });
+          var $121 = Data_Array.fromFoldable(Data_List_Types.foldableNonEmptyList);
+          return function ($122) {
+              return (function (messagesHtml) {
+                  return Html.divS([ Css.borderJ([ Design.vars.borderWidth1, "solid" ]), Css.overflow("auto"), Css.display("flex"), Css.flexDirection("column-reverse"), Css.width(Css_Functions.calc(Css_Functions.sub("100%")(Design.vars.borderWidth1))) ])([  ])(messagesHtml);
+              })($120($121($122)));
+          };
+      })();
+      var messageInput = Html.divS([ Css.display("flex"), Css.width(Css_Functions.calc(Css_Functions.add("100%")(Design.vars.borderWidth1))) ])([  ])([ Html.textareaS([ Css.height(Css.px(model.inputBox.height)), Css.flex("1"), Css.borderWidth(Css.px(Design.inputBoxBorderWidth)), Css.padding(".45em"), Css.outline("none") ])([ Attribute.id(inputId), Attribute.value(model.inputBox.content), inputWithHeight, detectSendMessage ])([  ]), Html.button([ Attribute.onClick(Producer.producea($dollar_EqMsg_32))(SendMessage.value) ])([ Html.text("Send") ]) ]);
+      return Html.divS([ Design.panel, Css.transform(Css_Functions.translateX(Css_Functions.calc(Css_Functions.sub("0px")(Design.vars.borderWidth1)))) ])([  ])([ (function () {
+          if (mthread instanceof Data_Maybe.Just) {
+              return messageList(mthread.value0);
+          };
+          if (mthread instanceof Data_Maybe.Nothing) {
+              return Data_Monoid.mempty(Data_Batched["$_MonoidBatched_7"]);
+          };
+          throw new Error("Failed pattern match at Main (line 474, column 7 - line 476, column 26): " + [ mthread.constructor.name ]);
+      })(), messageInput ]);
   };
   var view = function (model) {
       return {
