@@ -4,7 +4,8 @@ module Design
   , panel
   , staticStyles
   , vars
-  ) where
+  )
+  where
 
 import MasonPrelude
 
