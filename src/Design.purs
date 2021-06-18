@@ -1,9 +1,12 @@
 module Design
-  ( inputBoxBorderWidth
+  ( following
+  , inputBoxBorderWidth
   , panel
   , staticStyles
   , vars
   ) where
+
+import MasonPrelude
 
 import Css (Styles)
 import Css as C
@@ -12,7 +15,10 @@ import Css.Variables (mkVarStyles, mkVarValues)
 import Html (Html)
 import Platform (batch)
 
-varRec = { red1: "#ff9e9e" }
+varRec =
+  { borderWidth1: "1px"
+  , red1: "#ff9e9e"
+  }
 
 vars = mkVarValues {} varRec
 
@@ -35,3 +41,6 @@ panel =
 
 inputBoxBorderWidth :: Number
 inputBoxBorderWidth = 1.0
+
+following :: Array Styles -> Styles
+following = C.mapSelector $ C.prepend "* + "

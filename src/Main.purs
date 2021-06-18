@@ -26,7 +26,6 @@ import WHATWG.HTML.All as HTML
 import WHATWG.HTML.HTMLTextAreaElement as TextArea
 import Y.Client.WebSocket (Client)
 import Y.Client.WebSocket as Ws
-import Y.Shared.Config as Config
 import Y.Shared.Event (Event(..), EventPayload(..))
 import Y.Shared.Id (Id)
 import Y.Shared.Id as Id
@@ -72,7 +71,7 @@ init _ = do
 
   wsClient <-
     liftEffect
-    $ Ws.newConnection { url: "wss://y.maynards.site:" <> show Config.webSocketPort }
+    $ Ws.newConnection { url: "wss://y.maynards.site:8081" }
 
   tell
     (Cmd
@@ -197,6 +196,7 @@ update model@{ userId, convoId } =
                       , timeSent: instant
                       , authorId: model.userId
                       , convoId
+                      , deleted: false
                       , depIds:
                           model.messageParent
                           <#> Set.singleton
@@ -435,7 +435,9 @@ threadBar model =
     [ H.divS [ C.margin "5px" ] []
         [ H.button [ A.onClick NewThread ] [ H.text "New Thread" ] ]
     , H.divS
-        [ C.overflow "auto" ]
+        [ C.overflow "auto"
+        , C.borderJ [ Ds.vars.borderWidth1, "solid" ]
+        ]
         []
       $ leaves
       <#> \mid ->
@@ -447,7 +449,7 @@ threadBar model =
                       C.background Ds.vars.red1
                     else
                       mempty
-                  , C.border "1px solid"
+                  , Ds.following [ C.borderTop "1px solid" ]
                   , C.padding ".3em"
                   , C.whiteSpace "pre-wrap"
                   , C.overflow "auto"
@@ -472,7 +474,7 @@ threadView model =
       H.div []
         [ H.textareaS
             [ C.height $ C.px  model.inputBox.height
-            , C.width "100%"
+            , C.width $ CF.calc $ CF.add "100%" Ds.vars.borderWidth1
             , C.borderWidth $ C.px Ds.inputBoxBorderWidth
             , C.padding ".45em"
             ]
@@ -493,7 +495,7 @@ threadView model =
                createMessage :: Styles -> Message -> Html Msg
                createMessage styles mes =
                  H.divS
-                   [ C.border "1px solid darkgray"
+                   [ Ds.following [ C.borderBottom "1px solid" ]
                    , C.padding ".25em"
                    , C.position "relative"
                    , styles
@@ -543,12 +545,20 @@ threadView model =
              # Array.reverse
           )
       # \messagesHtml ->
-          H.divS [ Ds.panel ] []
+          H.divS
+            [ Ds.panel
+            , C.transform
+              $ CF.translateX
+              $ CF.calc
+              $ CF.sub "0px" Ds.vars.borderWidth1
+            ]
+            []
             [ H.divS
-                [ C.border "1px solid"
+                [ C.borderJ [ Ds.vars.borderWidth1, "solid" ]
                 , C.overflow "auto"
                 , C.display "flex"
                 , C.flexDirection "column-reverse"
+                , C.width $ CF.calc $ CF.sub "100%" Ds.vars.borderWidth1
                 ]
                 []
                 messagesHtml

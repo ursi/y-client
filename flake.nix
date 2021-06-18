@@ -12,7 +12,7 @@
 
            y-repo =
              { repo = "https://github.com/Quelklef/y.git";
-               rev = "c311e1e4bb6d0f904e78581f1764339caeba3c7b";
+               rev = "751180a826c61e512341045776fdccf01456acc1";
              };
 
            inherit
