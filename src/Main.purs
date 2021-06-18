@@ -60,8 +60,10 @@ type Model =
 type State =
   { events :: Array Event
   , names :: Map (Id "User") String
-  , messages :: TreeMap (Id "Message") Message
+  , messages :: MessageTree
   }
+
+type MessageTree = TreeMap (Id "Message") Message
 
 init :: Unit -> Update Msg Model
 init _ = do
@@ -236,7 +238,7 @@ update model@{ userId, convoId } =
           names :: Map (Id "User") String
           names = processedEvents.names
 
-          messages :: TreeMap (Id "Message") Message
+          messages :: MessageTree
           messages = processedEvents.messages
 
           model2 =
@@ -328,7 +330,7 @@ eventTime (Event e) = e.time
 processEvents ::
   Array Event
   -> { names :: Map (Id "User") String
-     , messages :: TreeMap (Id "Message") Message
+     , messages :: MessageTree
      }
 processEvents =
   splitEvents
