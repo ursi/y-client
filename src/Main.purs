@@ -414,7 +414,10 @@ view model =
 nameChanger :: Model -> Html Msg
 nameChanger model =
   H.divS [ C.margin ".3em" ] []
-    [ H.input
+    [ H.inputS
+        [ Ds.inputStyles
+        , C.border "none"
+        ]
         [ A.value model.nameInput
         , A.onInput UpdateNameInput
         ]
@@ -450,7 +453,7 @@ threadBar model =
             # \mes ->
                 H.divS
                   [ if model.selectedThreadRoot == Just mid then
-                      C.background Ds.vars.red1
+                      C.background Ds.vars.accent1
                     else
                       mempty
                   , Ds.following [ C.borderTop "1px solid" ]
@@ -497,9 +500,9 @@ threadView model =
           [ H.textareaS
               [ C.height $ C.px  model.inputBox.height
               , C.flex "1"
-              , C.borderWidth $ C.px Ds.inputBoxBorderWidth
+              , C.borderJ [ C.px Ds.inputBoxBorderWidth, "solid", Ds.vars.color ]
               , C.padding ".45em"
-              , C.outline "none"
+              , Ds.inputStyles
               ]
               [ A.id inputId
               , A.value model.inputBox.content
@@ -532,7 +535,7 @@ threadView model =
                               $ CF.linearGradient
                                   [ "to left"
                                   , "transparent"
-                                  , Ds.vars.red1
+                                  , Ds.vars.accent1
                                   ]
                             , C.width "15px"
                             , C.height "100%"
@@ -572,7 +575,7 @@ threadView model =
                 in
                 batch
                 $ Array.snoc
-                    (siblings <#> createMessage (C.background Ds.vars.gray1))
+                    (siblings <#> createMessage (C.background Ds.vars.lighterBackground22))
                     (createMessage (C.background Ds.vars.background) message)
                 # Array.reverse
              )
