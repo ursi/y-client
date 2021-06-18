@@ -562,8 +562,8 @@ threadView model =
                 in
                 batch
                 $ Array.snoc
-                    (siblings <#> createMessage (C.background "lightgray"))
-                    (createMessage (C.background "white") message)
+                    (siblings <#> createMessage (C.background Ds.vars.gray1))
+                    (createMessage (C.background Ds.vars.background) message)
                 # Array.reverse
              )
         .> \messagesHtml ->
