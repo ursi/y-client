@@ -503,6 +503,7 @@ threadView model =
               , C.borderJ [ C.px Ds.inputBoxBorderWidth, "solid", Ds.vars.color ]
               , C.padding ".45em"
               , Ds.inputStyles
+              , C.borderTop "none"
               ]
               [ A.id inputId
               , A.value model.inputBox.content
@@ -634,7 +635,7 @@ inputWithHeight =
         (\content height ->
            UpdateInputBox
              { content
-             , height: height + 2.0 * Ds.inputBoxBorderWidth
+             , height: height + Ds.inputBoxBorderWidth
              }
         )
         (TextArea.value elem)
