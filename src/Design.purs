@@ -64,6 +64,7 @@ staticStyles =
         , C.variable "padding" "4px"
         , C.paddingTop $ CF.var "padding"
         , C.paddingBottom $ CF.var "padding"
+        , C.fontFamily "monospace"
         ]
     ]
 
@@ -86,4 +87,5 @@ inputStyles =
     [ C.outline "none"
     , C.background vars.lighterBackground22
     , C.color vars.color
+    , C.fontFamily "monospace"
     ]
