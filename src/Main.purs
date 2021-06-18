@@ -473,10 +473,10 @@ threadView model =
 
     messageInput :: Html Msg
     messageInput =
-      H.div []
+      H.divS [C.display "flex" ] []
         [ H.textareaS
             [ C.height $ C.px  model.inputBox.height
-            , C.width $ CF.calc $ CF.add "100%" Ds.vars.borderWidth1
+            , C.flex "1"
             , C.borderWidth $ C.px Ds.inputBoxBorderWidth
             , C.padding ".45em"
             ]
@@ -486,6 +486,7 @@ threadView model =
             , detectSendMessage
             ]
             []
+        , H.button [ A.onClick SendMessage ] [ H.text "Send" ]
         ]
   in
   case mthread of
@@ -567,7 +568,7 @@ threadView model =
             , messageInput
             ]
 
-    Nothing -> messageInput
+    Nothing -> H.div [] [ messageInput ]
 
 inputWithHeight :: Attribute Msg
 inputWithHeight =
