@@ -72,7 +72,7 @@ init _ = do
 
   wsClient <-
     liftEffect
-    $ Ws.newConnection { url: "wss://y.maynards.site:8081" }
+    $ Ws.newConnection { url: "wss://y.maynards.site:" <> show Config.webSocketPort }
 
   tell
     (Cmd
