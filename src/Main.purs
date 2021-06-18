@@ -31,7 +31,7 @@ import Y.Shared.Id (Id)
 import Y.Shared.Id as Id
 import Y.Shared.Message (Message)
 import Y.Shared.Transmission (ToClient(..), ToServer(..))
-import Y.Shared.Util.Instant (Instant)
+import Y.Shared.Util.Instant (Instant, asMilliseconds)
 import Y.Shared.Util.Instant as Instant
 
 foreign import initialize_f :: ∀ a b r.  (Id a -> Id b -> r) -> Id a -> Id b -> Effect r
@@ -551,8 +551,16 @@ threadView model =
                           ]
                           []
                           [ H.text
-                            $ Map.lookup mes.authorId model.state.names
-                            # fromMaybe "<anonymous>"
+                            $ (Map.lookup mes.authorId model.state.names
+                               # fromMaybe "<anonymous>"
+                              )
+                          , getParent mes model.state.messages
+                            <#> formatTimeDiff <. _.timeSent ~$ mes.timeSent
+                            # maybe mempty
+                                \diff ->
+                                  H.spanS [ C.marginLeft "12px" ]
+                                  [ A.title $ dateString $ asMilliseconds mes.timeSent ]
+                                  [ H.text diff ]
                           ]
                       , H.divS
                           [ C.whiteSpace "pre-wrap"
@@ -578,6 +586,40 @@ threadView model =
                ]
                []
                messagesHtml
+
+foreign import dateString :: Number -> String
+
+getParent :: Message -> MessageTree -> Maybe Message
+getParent { id } tm =
+  TreeMap.lookup id tm
+  >>= _.parent
+  >>= TreeMap.lookup ~$ tm
+  <#> _.value
+
+formatTimeDiff :: Instant -> Instant -> String
+formatTimeDiff iOld iNew =
+  let
+    seconds = (asMilliseconds iNew - asMilliseconds iOld) / 1000.0
+
+    show' time label = show (round time) <> label
+  in
+  if round seconds < 120 then
+    show' seconds "s"
+  else
+    let minutes =  seconds / 60.0 in
+    if round minutes < 120 then
+      show' minutes "m"
+    else
+      let hours = minutes / 60.0 in
+      if hours < 48.0 then
+        show' hours "h"
+      else
+        let days = hours / 24.0 in
+        if days < 14.0 then
+          show' days "d"
+        else
+        show' (days / 7.0) "w"
+
 
 inputWithHeight :: Attribute Msg
 inputWithHeight =

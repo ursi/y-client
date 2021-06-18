@@ -10,3 +10,5 @@ exports.initialize_f = mk2Tuple => freshUid => freshCid => () => {
 
   return mk2Tuple(userId)(convoId);
 };
+
+exports.dateString = Date
