@@ -479,6 +479,7 @@ threadView model =
             , C.flex "1"
             , C.borderWidth $ C.px Ds.inputBoxBorderWidth
             , C.padding ".45em"
+            , C.outline "none"
             ]
             [ A.id inputId
             , A.value model.inputBox.content
