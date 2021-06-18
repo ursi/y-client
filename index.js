@@ -7935,7 +7935,7 @@ var PS = {};
   var values = {
       borderWidth1: "1px",
       hue1: "0",
-      gray1: "#d1d1d1",
+      gray1: "#e6e6e6",
       purple1: "#634372",
       saturation1: "0%"
   };
