@@ -473,7 +473,11 @@ threadView model =
 
     messageInput :: Html Msg
     messageInput =
-      H.divS [C.display "flex" ] []
+      H.divS
+        [ C.display "flex"
+        , C.width $ CF.calc $ CF.add "100%" Ds.vars.borderWidth1
+        ]
+        []
         [ H.textareaS
             [ C.height $ C.px  model.inputBox.height
             , C.flex "1"
@@ -490,86 +494,86 @@ threadView model =
         , H.button [ A.onClick SendMessage ] [ H.text "Send" ]
         ]
   in
-  case mthread of
-    Just thread ->
-      Array.fromFoldable thread
-      # map
-          (\(message /\ siblings) ->
-             let
-               createMessage :: Styles -> Message -> Html Msg
-               createMessage styles mes =
-                 H.divS
-                   [ Ds.following [ C.borderBottom "1px solid" ]
-                   , C.padding ".25em"
-                   , C.position "relative"
-                   , styles
-                   ]
-                   [ A.onClick $ SelectMessageParent mes.id ]
-                   [ if model.messageParent == Just mes.id then
-                       H.divS
-                         [ C.position "absolute"
-                         , C.background
-                           $ CF.linearGradient
-                               [ "to left"
-                               , "transparent"
-                               , Ds.vars.red1
-                               ]
-                         , C.width "15px"
-                         , C.height "100%"
-                         , C.top "0"
-                         , C.left "0"
-                         ]
-                         []
-                         []
-                     else
-                       mempty
-                   , H.divS
-                       [ C.font "0.72em sans-serif"
-                       , C.opacity "0.6"
-                       , C.marginBottom "0.7em"
-                       , C.paddingTop "1px"
-                       ]
-                       []
-                       [ H.text
-                         $ Map.lookup mes.authorId model.state.names
-                         # fromMaybe "<anonymous>"
-                       ]
-                   , H.divS
-                       [ C.whiteSpace "pre-wrap"
+  H.divS
+    [ Ds.panel
+    , C.transform
+      $ CF.translateX
+      $ CF.calc
+      $ CF.sub "0px" Ds.vars.borderWidth1
+    ]
+    []
+    [ case mthread of
+        Just thread ->
+          Array.fromFoldable thread
+          # map
+              (\(message /\ siblings) ->
+                 let
+                   createMessage :: Styles -> Message -> Html Msg
+                   createMessage styles mes =
+                     H.divS
+                       [ Ds.following [ C.borderBottom "1px solid" ]
+                       , C.padding ".25em"
                        , C.position "relative"
+                       , styles
                        ]
-                       []
-                       [ H.text mes.content ]
-                   ]
-             in
-             batch
-             $ Array.snoc
-                 (siblings <#> createMessage (C.background "lightgray"))
-                 (createMessage (C.background "white") message)
-             # Array.reverse
-          )
-      # \messagesHtml ->
-          H.divS
-            [ Ds.panel
-            , C.transform
-              $ CF.translateX
-              $ CF.calc
-              $ CF.sub "0px" Ds.vars.borderWidth1
-            ]
-            []
-            [ H.divS
-                [ C.borderJ [ Ds.vars.borderWidth1, "solid" ]
-                , C.overflow "auto"
-                , C.display "flex"
-                , C.flexDirection "column-reverse"
-                , C.width $ CF.calc $ CF.sub "100%" Ds.vars.borderWidth1
-                ]
-                []
-                messagesHtml
-            , messageInput
-            ]
+                       [ A.onClick $ SelectMessageParent mes.id ]
+                       [ if model.messageParent == Just mes.id then
+                           H.divS
+                             [ C.position "absolute"
+                             , C.background
+                               $ CF.linearGradient
+                                   [ "to left"
+                                   , "transparent"
+                                   , Ds.vars.red1
+                                   ]
+                             , C.width "15px"
+                             , C.height "100%"
+                             , C.top "0"
+                             , C.left "0"
+                             ]
+                             []
+                             []
+                         else
+                           mempty
+                       , H.divS
+                           [ C.font "0.72em sans-serif"
+                           , C.opacity "0.6"
+                           , C.marginBottom "0.7em"
+                           , C.paddingTop "1px"
+                           ]
+                           []
+                           [ H.text
+                             $ Map.lookup mes.authorId model.state.names
+                             # fromMaybe "<anonymous>"
+                           ]
+                       , H.divS
+                           [ C.whiteSpace "pre-wrap"
+                           , C.position "relative"
+                           ]
+                           []
+                           [ H.text mes.content ]
+                       ]
+                 in
+                 batch
+                 $ Array.snoc
+                     (siblings <#> createMessage (C.background "lightgray"))
+                     (createMessage (C.background "white") message)
+                 # Array.reverse
+              )
+          # \messagesHtml ->
+               H.divS
+                 [ C.borderJ [ Ds.vars.borderWidth1, "solid" ]
+                 , C.overflow "auto"
+                 , C.display "flex"
+                 , C.flexDirection "column-reverse"
+                 , C.width $ CF.calc $ CF.sub "100%" Ds.vars.borderWidth1
+                 ]
+                 []
+                 messagesHtml
 
-    Nothing -> H.div [] [ messageInput ]
+        Nothing -> mempty
+    , messageInput
+    ]
 
 inputWithHeight :: Attribute Msg
 inputWithHeight =
