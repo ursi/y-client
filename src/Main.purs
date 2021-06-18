@@ -437,7 +437,9 @@ threadBar model =
     [ H.divS [ C.margin "5px" ] []
         [ H.button [ A.onClick NewThread ] [ H.text "New Thread" ] ]
     , H.divS
-        [ C.overflow "auto" ]
+        [ C.overflow "auto"
+        , C.border "1px solid"
+        ]
         []
       $ leaves
       <#> \mid ->
@@ -449,7 +451,7 @@ threadBar model =
                       C.background Ds.vars.red1
                     else
                       mempty
-                  , C.border "1px solid"
+                  , Ds.following [ C.borderTop "1px solid" ]
                   , C.padding ".3em"
                   , C.whiteSpace "pre-wrap"
                   , C.overflow "auto"
@@ -495,7 +497,7 @@ threadView model =
                createMessage :: Styles -> Message -> Html Msg
                createMessage styles mes =
                  H.divS
-                   [ C.border "1px solid darkgray"
+                   [ Ds.following [ C.borderBottom "1px solid" ]
                    , C.padding ".25em"
                    , C.position "relative"
                    , styles
@@ -545,7 +547,11 @@ threadView model =
              # Array.reverse
           )
       # \messagesHtml ->
-          H.divS [ Ds.panel ] []
+          H.divS
+            [ Ds.panel
+            , C.transform $ CF.translateX "-1px"
+            ]
+            []
             [ H.divS
                 [ C.border "1px solid"
                 , C.overflow "auto"

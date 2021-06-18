@@ -1,9 +1,12 @@
 module Design
-  ( inputBoxBorderWidth
+  ( following
+  , inputBoxBorderWidth
   , panel
   , staticStyles
   , vars
   ) where
+
+import MasonPrelude
 
 import Css (Styles)
 import Css as C
@@ -35,3 +38,6 @@ panel =
 
 inputBoxBorderWidth :: Number
 inputBoxBorderWidth = 1.0
+
+following :: Array Styles -> Styles
+following = C.mapSelector $ C.prepend "* + "
