@@ -417,11 +417,13 @@ nameChanger model =
     [ H.inputS
         [ Ds.inputStyles
         , C.border "none"
+        , C.borderRadius "5px"
+        , C.padding "3px"
         ]
         [ A.value model.nameInput
         , A.onInput UpdateNameInput
         ]
-    , H.button [ A.onClick UpdateName ] [ H.text "Update Name"]
+    , H.buttonS [ C.marginLeft "5px" ] [ A.onClick UpdateName ] [ H.text "Update Name"]
     ]
 
 threadBar :: Model -> Html Msg
