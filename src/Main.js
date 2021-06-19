@@ -12,3 +12,10 @@ exports.initialize_f = mk2Tuple => freshUid => freshCid => () => {
 };
 
 exports.dateString = Date
+
+exports.sendNotification = person => message => () => {
+	new Notification(`⅄`, {body: person + ":\n" + message})
+		.onclick = function() {focus(window); this.close()};
+};
+
+exports.notificationsPermission = () => Notification.requestPermission();

@@ -9,6 +9,7 @@ import Css as C
 import Css.Functions as CF
 import Data.Array as Array
 import Data.List ((:))
+import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Set as Set
@@ -18,7 +19,9 @@ import Html (Html)
 import Html as H
 import Platform (Cmd(..), Program, Update, afterRender, batch, tell)
 import Platform as Platform
+import RefEq (RefEq(..))
 import Sub (Sub)
+import Sub as Sub
 import TreeMap (IVP, Thread, TreeMap, toTreeMap)
 import TreeMap as TreeMap
 import WebSocketSub (wsToSub)
@@ -36,6 +39,8 @@ import Y.Shared.Util.Instant as Instant
 
 foreign import initialize_f :: ∀ a b r.  (Id a -> Id b -> r) -> Id a -> Id b -> Effect r
 foreign import getHostname :: Effect String
+foreign import sendNotification :: String -> String -> Effect Unit
+foreign import notificationsPermission :: Effect Unit
 
 main :: Program Unit Model Msg
 main = do
@@ -52,10 +57,14 @@ type Model =
   , wsClient :: Client ToServer ToClient
   , state :: State
   , inputBox :: InputBox
-  , selectedThreadRoot :: Maybe (Id "Message")
+  , thread :: Maybe Leaf
   , messageParent :: Maybe (Id "Message")
   , nameInput :: String
+  -- used to ignore the initial batch of messages
+  , notifying :: Boolean
   }
+
+type Leaf = (Id "Message")
 
 type State =
   { events :: Array Event
@@ -67,6 +76,8 @@ type MessageTree = TreeMap (Id "Message") Message
 
 init :: Unit -> Update Msg Model
 init _ = do
+  liftEffect notificationsPermission
+
   userId /\ convoId <- liftEffect do
     freshUserId /\ freshConvoId <- liftEffect $ lift2 Tuple Id.new Id.new
     initialize_f Tuple freshUserId freshConvoId
@@ -93,9 +104,10 @@ init _ = do
         , names: Map.empty
         }
     , inputBox: defaultInputBox
-    , selectedThreadRoot: Nothing
+    , thread: Nothing
     , messageParent: Nothing
     , nameInput: ""
+    , notifying: false
     }
 
 data Msg
@@ -108,20 +120,23 @@ data Msg
   | SelectMessageParent (Id "Message")
   | UpdateNameInput String
   | UpdateName
+  | SelectSibling (Id "Message")
   | NoOp
 
 instance Eq Msg where
-  eq m1 m2 = case m1, m2 of
-    UpdateInputBox i1, UpdateInputBox i2 -> i1 == i2
-    SendMessage, SendMessage -> true
-    WebSocketOpened, WebSocketOpened -> true
-    SelectThreadRoot mid1, SelectThreadRoot mid2 -> mid1 == mid2
-    NewThread, NewThread -> true
-    SelectMessageParent mid1, SelectMessageParent mid2 -> mid1 == mid2
-    UpdateNameInput s1, UpdateNameInput s2 -> s1 == s2
-    UpdateName, UpdateName -> true
-    NoOp, NoOp -> true
-    _, _ -> false
+  eq =
+    case _, _ of
+      UpdateInputBox i1, UpdateInputBox i2 -> i1 == i2
+      SendMessage, SendMessage -> true
+      WebSocketOpened, WebSocketOpened -> true
+      SelectThreadRoot m1, SelectThreadRoot m2 -> m1 == m2
+      NewThread, NewThread -> true
+      SelectMessageParent m1, SelectMessageParent m2 -> m1 == m2
+      UpdateNameInput s1, UpdateNameInput s2 -> s1 == s2
+      UpdateName, UpdateName -> true
+      SelectSibling m1, SelectSibling m2 -> m1 == m2
+      NoOp, NoOp -> true
+      _, _ -> false
 
 type InputBox =
   { content :: String
@@ -144,6 +159,13 @@ update model@{ userId, convoId } =
         >>= maybe (pure unit) (HTML.focus {})
   in
   case _ of
+    SelectSibling mid ->
+      pure
+      $ model
+          { messageParent = Just mid
+          , thread = TreeMap.findLeaf mid model.state.messages
+          }
+
     UpdateName -> do
       liftEffect do
         pushEvent model
@@ -158,15 +180,14 @@ update model@{ userId, convoId } =
 
     UpdateNameInput str -> pure $ model { nameInput = str }
 
-    SelectMessageParent mid -> do
-      pure $ model { messageParent = Just mid }
+    SelectMessageParent mid -> pure $ model { messageParent = Just mid }
 
     NewThread -> do
       focusInput
 
       pure
         (model
-           { selectedThreadRoot = Nothing
+           { thread = Nothing
            , messageParent = Nothing
            }
         )
@@ -176,7 +197,7 @@ update model@{ userId, convoId } =
 
       pure
         (model
-           { selectedThreadRoot = Just mid
+           { thread = Just mid
            , messageParent = Just mid
            }
         )
@@ -211,10 +232,10 @@ update model@{ userId, convoId } =
             (model
                { inputBox = defaultInputBox
                , messageParent = Nothing
-               , selectedThreadRoot =
-                   case model.selectedThreadRoot of
+               , thread =
+                   case model.thread of
                      Nothing -> Just id
-                     _ -> model.selectedThreadRoot
+                     _ -> model.thread
                }
             )
       else
@@ -223,49 +244,72 @@ update model@{ userId, convoId } =
     UpdateInputBox ib ->
       let model2 = model { inputBox = ib } in
 
-      case model.selectedThreadRoot, model.messageParent of
-        Just _, Nothing -> pure $ model2 { messageParent = model.selectedThreadRoot }
+      case model.thread, model.messageParent of
+        Just _, Nothing -> pure $ model2 { messageParent = model.thread }
         _, _ -> pure model2
 
-    TransmissionReceived mtc -> case mtc of
-      Just (ToClient_Broadcast events) ->
-        let
-          newEvents = addEvents model.state.events events
-          processedEvents = processEvents newEvents
+    TransmissionReceived mtc ->
+      case mtc of
+        Just (ToClient_Broadcast events) ->
+          let
+            newEvents = addEvents model.state.events events
+            processedEvents = processEvents newEvents
 
-          names :: Map (Id "User") String
-          names = processedEvents.names
+            names :: Map (Id "User") String
+            names = processedEvents.names
 
-          messages :: MessageTree
-          messages = processedEvents.messages
+            messages :: MessageTree
+            messages = processedEvents.messages
 
-          model2 =
-            model
-              { state = { events: newEvents, names, messages }
-              , nameInput =
-                  if model.nameInput == "" then
-                    Map.lookup userId names
-                    # fromMaybe ""
-                  else
-                    model.nameInput
-              }
-        in
-        case model.selectedThreadRoot of
-          Just mid ->
-            let mleaf = TreeMap.findLeaf mid messages in
-            pure
-            $ model2
-                { selectedThreadRoot = mleaf
-                , messageParent =
-                    if model.inputBox.content == "" then
-                      mleaf
+            model2 =
+              model
+                { state = { events: newEvents, names, messages }
+                , nameInput =
+                    if model.nameInput == "" then
+                      Map.lookup userId names
+                      # fromMaybe ""
                     else
-                      model.messageParent
+                      model.nameInput
+                , notifying = true
                 }
+            firstMessage :: Maybe Message
+            firstMessage =
+              splitEvents events
+              # _.messageEvents
+              # List.head
+              <#> _.message
+          in do
+          if model.notifying then
+            liftEffect
+            $ maybe (pure unit)
+                (\mes ->
+                   if mes.authorId == userId then
+                     pure unit
+                   else
+                    sendNotification
+                      (getName mes.authorId model2.state.names)
+                      mes.content
+                )
+                firstMessage
+          else
+            pure unit
 
-          Nothing -> pure model2
+          case model.thread of
+            Just mid ->
+              let mleaf = TreeMap.findLeaf mid messages in
+              pure
+              $ model2
+                  { thread = mleaf
+                  , messageParent =
+                      if model.inputBox.content == "" then
+                        mleaf
+                      else
+                        model.messageParent
+                  }
 
-      Nothing -> pure model
+            Nothing -> pure model2
+
+        Nothing -> pure model
 
     WebSocketOpened -> do
       liftEffect do
@@ -384,7 +428,36 @@ toIVP value@{ id, depIds } =
   }
 
 subscriptions :: Model -> Sub Msg
-subscriptions model = wsToSub TransmissionReceived model.wsClient
+subscriptions model =
+  batch
+    [ wsToSub TransmissionReceived model.wsClient
+    , Sub.on "keydown" hitEnter
+    ]
+
+hitEnter :: HTML.Event -> Effect (Maybe Msg)
+hitEnter =
+  HTML.toMaybeKeyboardEvent
+  .> maybe (pure Nothing)
+       \kbe ->
+         if HTML.key kbe == "Enter" then do
+           document <- HTML.window >>= HTML.document
+           body <- HTML.unsafeBody document
+           mactiveElement <- HTML.activeElement document
+           maybe (pure Nothing)
+             (\activeElement ->
+                if (RefEq body == RefEq activeElement) then do
+                  bind
+                    (HTML.getElementById inputId document # map HTML.toMaybeHTMLElement)
+                    (maybe (pure unit) (HTML.focus {}))
+
+                  HTML.preventDefault kbe
+                  pure Nothing
+                else
+                  pure Nothing
+             )
+             mactiveElement
+         else
+           pure Nothing
 
 view ::
   Model
@@ -452,7 +525,7 @@ threadBar model =
             # maybe "oops" (_.value .> _.content)
             # \mes ->
                 H.divS
-                  [ if model.selectedThreadRoot == Just mid then
+                  [ if model.thread == Just mid then
                       C.background Ds.vars.accent1
                     else
                       mempty
@@ -467,6 +540,8 @@ threadBar model =
 
 inputId :: String
 inputId = "input"
+
+type IsSibling = Boolean
 
 threadView :: Model -> Html Msg
 threadView model =
@@ -487,7 +562,7 @@ threadView model =
     where
       mthread :: Maybe (Thread Message)
       mthread =
-        model.selectedThreadRoot
+        model.thread
         >>= TreeMap.getThread ~$ model.state.messages
 
       messageInput :: Html Msg
@@ -520,15 +595,18 @@ threadView model =
         .> map
              (\(message /\ siblings) ->
                 let
-                  createMessage :: Styles -> Message -> Html Msg
-                  createMessage styles mes =
+                  createMessage :: IsSibling -> Styles -> Message -> Html Msg
+                  createMessage isSibling styles mes =
                     H.divS
                       [ Ds.following [ C.borderBottom "1px solid" ]
                       , C.padding ".25em"
                       , C.position "relative"
                       , styles
                       ]
-                      [ A.onClick $ SelectMessageParent mes.id ]
+                      [ A.onClick
+                        $ (if isSibling then SelectSibling else SelectMessageParent)
+                            mes.id
+                      ]
                       [ if model.messageParent == Just mes.id then
                           H.divS
                             [ C.position "absolute"
@@ -554,10 +632,7 @@ threadView model =
                           , C.paddingTop "1px"
                           ]
                           []
-                          [ H.text
-                            $ (Map.lookup mes.authorId model.state.names
-                               # fromMaybe "<anonymous>"
-                              )
+                          [ H.text $ getName mes.authorId model.state.names
                           , getParent mes model.state.messages
                             <#> formatTimeDiff <. _.timeSent ~$ mes.timeSent
                             # maybe mempty
@@ -576,8 +651,10 @@ threadView model =
                 in
                 batch
                 $ Array.snoc
-                    (siblings <#> createMessage (C.background Ds.vars.lighterBackground22))
-                    (createMessage (C.background Ds.vars.background) message)
+                    (siblings
+                     <#> createMessage true (C.background Ds.vars.lighterBackground22)
+                    )
+                    (createMessage false (C.background Ds.vars.background) message)
                 # Array.reverse
              )
         .> \messagesHtml ->
@@ -590,6 +667,9 @@ threadView model =
                ]
                []
                messagesHtml
+
+getName :: Id "User" -> Map (Id "User") String -> String
+getName id names = Map.lookup id names # fromMaybe "<anonymous>"
 
 foreign import dateString :: Number -> String
 
