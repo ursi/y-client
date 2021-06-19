@@ -60,8 +60,6 @@ type Model =
   , thread :: Maybe Leaf
   , messageParent :: Maybe (Id "Message")
   , nameInput :: String
-  -- used to ignore the initial batch of messages
-  , notifying :: Boolean
   }
 
 type Leaf = (Id "Message")
@@ -107,7 +105,6 @@ init _ = do
     , thread: Nothing
     , messageParent: Nothing
     , nameInput: ""
-    , notifying: false
     }
 
 data Msg
@@ -270,7 +267,6 @@ update model@{ userId, convoId } =
                       # fromMaybe ""
                     else
                       model.nameInput
-                , notifying = true
                 }
             firstMessage :: Maybe Message
             firstMessage =
@@ -279,20 +275,18 @@ update model@{ userId, convoId } =
               # List.head
               <#> _.message
           in do
-          if model.notifying then
-            liftEffect
-            $ maybe (pure unit)
-                (\mes ->
-                   if mes.authorId == userId then
-                     pure unit
-                   else
-                    sendNotification
-                      (getName mes.authorId model2.state.names)
-                      mes.content
-                )
-                firstMessage
-          else
-            pure unit
+          liftEffect
+            (maybe (pure unit)
+               (\mes ->
+                  if mes.authorId == userId then
+                    pure unit
+                  else
+                   sendNotification
+                     (getName mes.authorId model2.state.names)
+                     mes.content
+               )
+               firstMessage
+            )
 
           case model.thread of
             Just mid ->
