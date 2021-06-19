@@ -8187,6 +8187,9 @@ var PS = {};
               }));
           };
       };
+  };                         
+  var title = function (t) {
+      return element("title")([  ])([ text(t) ]);
   };                     
   var divS = elementS("div");    
   var buttonS = elementS("button");
@@ -8198,6 +8201,7 @@ var PS = {};
   exports["inputS"] = inputS;
   exports["spanS"] = spanS;
   exports["textareaS"] = textareaS;
+  exports["title"] = title;
 })(PS);
 (function(exports) {
                                                        
@@ -9870,7 +9874,7 @@ var PS = {};
   };
   var view = function (model) {
       return {
-          head: [  ],
+          head: [ Html.title("\u2144") ],
           body: [ Design.staticStyles, Html.divS([ Css.display("grid"), Css.grid("100vh / min(30%, 350px) 1fr") ])([  ])([ Html.divS([ Design.panel ])([  ])([ nameChanger(model), threadBar(model) ]), threadView(model) ]) ]
       };
   };
