@@ -110,6 +110,7 @@ data Msg
   | SelectMessageParent (Id "Message")
   | UpdateNameInput String
   | UpdateName
+  | SelectSibling (Id "Message")
   | NoOp
 
 instance Eq Msg where
@@ -122,6 +123,7 @@ instance Eq Msg where
     SelectMessageParent mid1, SelectMessageParent mid2 -> mid1 == mid2
     UpdateNameInput s1, UpdateNameInput s2 -> s1 == s2
     UpdateName, UpdateName -> true
+    SelectSibling mid1, SelectSibling mid2 -> mid1 == mid2
     NoOp, NoOp -> true
     _, _ -> false
 
@@ -146,6 +148,13 @@ update model@{ userId, convoId } =
         >>= maybe (pure unit) (HTML.focus {})
   in
   case _ of
+    SelectSibling mid ->
+      pure
+      $ model
+          { messageParent = Just mid
+          , selectedThreadRoot = TreeMap.findLeaf mid model.state.messages
+          }
+
     UpdateName -> do
       liftEffect do
         pushEvent model
@@ -470,6 +479,8 @@ threadBar model =
 inputId :: String
 inputId = "input"
 
+type IsSibling = Boolean
+
 threadView :: Model -> Html Msg
 threadView model =
   H.divS
@@ -522,15 +533,18 @@ threadView model =
         .> map
              (\(message /\ siblings) ->
                 let
-                  createMessage :: Styles -> Message -> Html Msg
-                  createMessage styles mes =
+                  createMessage :: IsSibling -> Styles -> Message -> Html Msg
+                  createMessage isSibling styles mes =
                     H.divS
                       [ Ds.following [ C.borderBottom "1px solid" ]
                       , C.padding ".25em"
                       , C.position "relative"
                       , styles
                       ]
-                      [ A.onClick $ SelectMessageParent mes.id ]
+                      [ A.onClick
+                        $ (if isSibling then SelectSibling else SelectMessageParent)
+                            mes.id
+                      ]
                       [ if model.messageParent == Just mes.id then
                           H.divS
                             [ C.position "absolute"
@@ -578,8 +592,10 @@ threadView model =
                 in
                 batch
                 $ Array.snoc
-                    (siblings <#> createMessage (C.background Ds.vars.lighterBackground22))
-                    (createMessage (C.background Ds.vars.background) message)
+                    (siblings
+                     <#> createMessage true (C.background Ds.vars.lighterBackground22)
+                    )
+                    (createMessage false (C.background Ds.vars.background) message)
                 # Array.reverse
              )
         .> \messagesHtml ->
