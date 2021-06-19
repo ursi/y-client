@@ -461,7 +461,7 @@ view ::
      , body :: Array (Html Msg)
      }
 view model =
-  { head: []
+  { head: [ H.title "⅄" ]
   , body:
       [ Ds.staticStyles
       , H.divS
