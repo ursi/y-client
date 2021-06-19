@@ -18,7 +18,9 @@ import Html (Html)
 import Html as H
 import Platform (Cmd(..), Program, Update, afterRender, batch, tell)
 import Platform as Platform
+import RefEq (RefEq(..))
 import Sub (Sub)
+import Sub as Sub
 import TreeMap (IVP, Thread, TreeMap, toTreeMap)
 import TreeMap as TreeMap
 import WebSocketSub (wsToSub)
@@ -396,7 +398,36 @@ toIVP value@{ id, depIds } =
   }
 
 subscriptions :: Model -> Sub Msg
-subscriptions model = wsToSub TransmissionReceived model.wsClient
+subscriptions model =
+  batch
+    [ wsToSub TransmissionReceived model.wsClient
+    , Sub.on "keydown" hitEnter
+    ]
+
+hitEnter :: HTML.Event -> Effect (Maybe Msg)
+hitEnter =
+  HTML.toMaybeKeyboardEvent
+  .> maybe (pure Nothing)
+       \kbe ->
+         if HTML.key kbe == "Enter" then do
+           document <- HTML.window >>= HTML.document
+           body <- HTML.unsafeBody document
+           mactiveElement <- HTML.activeElement document
+           maybe (pure Nothing)
+             (\activeElement ->
+                if (RefEq body == RefEq activeElement) then do
+                  bind
+                    (HTML.getElementById inputId document # map HTML.toMaybeHTMLElement)
+                    (maybe (pure unit) (HTML.focus {}))
+
+                  HTML.preventDefault kbe
+                  pure Nothing
+                else
+                  pure Nothing
+             )
+             mactiveElement
+         else
+           pure Nothing
 
 view ::
   Model
