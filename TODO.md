@@ -1,2 +1,9 @@
-- add diff and absolute timestamps
-- add the ability to click on siblings and explore their subtrees
+- set the title of the page and make it different if you have unread messages
+- some way to pin messages
+- some way to give context to threads instead of just the last message
+- message searching
+- make links clickable
+- make clicking on a notification go to its thread
+- hide 1-off leaves so they don't clutter the thread bar but still allow replies to old message to be discoverable
+- message links
+- add sound to notification
