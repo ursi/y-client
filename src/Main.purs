@@ -607,11 +607,11 @@ threadView model =
                             [ C.position "absolute"
                             , C.background
                               $ CF.linearGradient
-                                  [ "to left"
+                                  [ "to right"
+                                  , Ds.vars.accent1 <> " 20%"
                                   , "transparent"
-                                  , Ds.vars.accent1
                                   ]
-                            , C.width "15px"
+                            , C.width "20px"
                             , C.height "100%"
                             , C.top "0"
                             , C.left "0"
