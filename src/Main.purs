@@ -52,10 +52,12 @@ type Model =
   , wsClient :: Client ToServer ToClient
   , state :: State
   , inputBox :: InputBox
-  , selectedThreadRoot :: Maybe (Id "Message")
+  , thread :: Maybe Leaf
   , messageParent :: Maybe (Id "Message")
   , nameInput :: String
   }
+
+type Leaf = (Id "Message")
 
 type State =
   { events :: Array Event
@@ -95,7 +97,7 @@ init _ = do
         , names: Map.empty
         }
     , inputBox: defaultInputBox
-    , selectedThreadRoot: Nothing
+    , thread: Nothing
     , messageParent: Nothing
     , nameInput: ""
     }
@@ -152,7 +154,7 @@ update model@{ userId, convoId } =
       pure
       $ model
           { messageParent = Just mid
-          , selectedThreadRoot = TreeMap.findLeaf mid model.state.messages
+          , thread = TreeMap.findLeaf mid model.state.messages
           }
 
     UpdateName -> do
@@ -169,15 +171,14 @@ update model@{ userId, convoId } =
 
     UpdateNameInput str -> pure $ model { nameInput = str }
 
-    SelectMessageParent mid -> do
-      pure $ model { messageParent = Just mid }
+    SelectMessageParent mid -> pure $ model { messageParent = Just mid }
 
     NewThread -> do
       focusInput
 
       pure
         (model
-           { selectedThreadRoot = Nothing
+           { thread = Nothing
            , messageParent = Nothing
            }
         )
@@ -187,7 +188,7 @@ update model@{ userId, convoId } =
 
       pure
         (model
-           { selectedThreadRoot = Just mid
+           { thread = Just mid
            , messageParent = Just mid
            }
         )
@@ -222,10 +223,10 @@ update model@{ userId, convoId } =
             (model
                { inputBox = defaultInputBox
                , messageParent = Nothing
-               , selectedThreadRoot =
-                   case model.selectedThreadRoot of
+               , thread =
+                   case model.thread of
                      Nothing -> Just id
-                     _ -> model.selectedThreadRoot
+                     _ -> model.thread
                }
             )
       else
@@ -234,8 +235,8 @@ update model@{ userId, convoId } =
     UpdateInputBox ib ->
       let model2 = model { inputBox = ib } in
 
-      case model.selectedThreadRoot, model.messageParent of
-        Just _, Nothing -> pure $ model2 { messageParent = model.selectedThreadRoot }
+      case model.thread, model.messageParent of
+        Just _, Nothing -> pure $ model2 { messageParent = model.thread }
         _, _ -> pure model2
 
     TransmissionReceived mtc -> case mtc of
@@ -261,12 +262,12 @@ update model@{ userId, convoId } =
                     model.nameInput
               }
         in
-        case model.selectedThreadRoot of
+        case model.thread of
           Just mid ->
             let mleaf = TreeMap.findLeaf mid messages in
             pure
             $ model2
-                { selectedThreadRoot = mleaf
+                { thread = mleaf
                 , messageParent =
                     if model.inputBox.content == "" then
                       mleaf
@@ -463,7 +464,7 @@ threadBar model =
             # maybe "oops" (_.value .> _.content)
             # \mes ->
                 H.divS
-                  [ if model.selectedThreadRoot == Just mid then
+                  [ if model.thread == Just mid then
                       C.background Ds.vars.accent1
                     else
                       mempty
@@ -500,7 +501,7 @@ threadView model =
     where
       mthread :: Maybe (Thread Message)
       mthread =
-        model.selectedThreadRoot
+        model.thread
         >>= TreeMap.getThread ~$ model.state.messages
 
       messageInput :: Html Msg
