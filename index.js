@@ -9835,7 +9835,7 @@ var PS = {};
                           })()(mes.id)) ])([ (function () {
                               var $125 = Data_Eq.eq(Data_Maybe.eqMaybe(Y_Shared_Id.eqId))(model.messageParent)(new Data_Maybe.Just(mes.id));
                               if ($125) {
-                                  return Html.divS([ Css.position("absolute"), Css.background(Css_Functions.linearGradient([ "to left", "transparent", Design.vars.accent1 ])), Css.width("15px"), Css.height("100%"), Css.top("0"), Css.left("0") ])([  ])([  ]);
+                                  return Html.divS([ Css.position("absolute"), Css.background(Css_Functions.linearGradient([ "to right", Design.vars.accent1 + " 20%", "transparent" ])), Css.width("20px"), Css.height("100%"), Css.top("0"), Css.left("0") ])([  ])([  ]);
                               };
                               return Data_Monoid.mempty(Data_Batched["$_MonoidBatched_7"]);
                           })(), Html.divS([ Css.font("0.72em sans-serif"), Css.opacity("0.6"), Css.marginBottom("0.7em"), Css.paddingTop("1px") ])([  ])([ Html.text(getName(mes.authorId)(model.state.names)), Data_Maybe.maybe(Data_Monoid.mempty(Data_Batched["$_MonoidBatched_7"]))(function (diff) {
