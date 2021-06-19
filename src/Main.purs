@@ -595,6 +595,7 @@ threadView model =
                       [ Ds.following [ C.borderBottom "1px solid" ]
                       , C.padding ".25em"
                       , C.position "relative"
+                      , C.paddingBottom "6px"
                       , styles
                       ]
                       [ A.onClick
