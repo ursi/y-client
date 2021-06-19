@@ -9,6 +9,7 @@ import Css as C
 import Css.Functions as CF
 import Data.Array as Array
 import Data.List ((:))
+import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Set as Set
@@ -38,6 +39,8 @@ import Y.Shared.Util.Instant as Instant
 
 foreign import initialize_f :: ∀ a b r.  (Id a -> Id b -> r) -> Id a -> Id b -> Effect r
 foreign import getHostname :: Effect String
+foreign import sendNotification :: String -> String -> Effect Unit
+foreign import notificationsPermission :: Effect Unit
 
 main :: Program Unit Model Msg
 main = do
@@ -57,6 +60,8 @@ type Model =
   , thread :: Maybe Leaf
   , messageParent :: Maybe (Id "Message")
   , nameInput :: String
+  -- used to ignore the initial batch of messages
+  , notifying :: Boolean
   }
 
 type Leaf = (Id "Message")
@@ -71,6 +76,8 @@ type MessageTree = TreeMap (Id "Message") Message
 
 init :: Unit -> Update Msg Model
 init _ = do
+  liftEffect notificationsPermission
+
   userId /\ convoId <- liftEffect do
     freshUserId /\ freshConvoId <- liftEffect $ lift2 Tuple Id.new Id.new
     initialize_f Tuple freshUserId freshConvoId
@@ -102,6 +109,7 @@ init _ = do
     , thread: Nothing
     , messageParent: Nothing
     , nameInput: ""
+    , notifying: false
     }
 
 data Msg
@@ -262,8 +270,30 @@ update model@{ userId, convoId } =
                     # fromMaybe ""
                   else
                     model.nameInput
+              , notifying = true
               }
-        in
+          firstMessage :: Maybe Message
+          firstMessage =
+            splitEvents events
+            # _.messageEvents
+            # List.head
+            <#> _.message
+        in do
+        if model.notifying then
+          liftEffect
+          $ maybe (pure unit)
+              (\mes ->
+                 if mes.authorId == userId then
+                   pure unit
+                 else
+                  sendNotification
+                    (getName mes.authorId model2.state.names)
+                    mes.content
+              )
+              firstMessage
+        else
+          pure unit
+
         case model.thread of
           Just mid ->
             let mleaf = TreeMap.findLeaf mid messages in
