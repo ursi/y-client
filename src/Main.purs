@@ -126,18 +126,19 @@ data Msg
   | NoOp
 
 instance Eq Msg where
-  eq m1 m2 = case m1, m2 of
-    UpdateInputBox i1, UpdateInputBox i2 -> i1 == i2
-    SendMessage, SendMessage -> true
-    WebSocketOpened, WebSocketOpened -> true
-    SelectThreadRoot mid1, SelectThreadRoot mid2 -> mid1 == mid2
-    NewThread, NewThread -> true
-    SelectMessageParent mid1, SelectMessageParent mid2 -> mid1 == mid2
-    UpdateNameInput s1, UpdateNameInput s2 -> s1 == s2
-    UpdateName, UpdateName -> true
-    SelectSibling mid1, SelectSibling mid2 -> mid1 == mid2
-    NoOp, NoOp -> true
-    _, _ -> false
+  eq =
+    case _, _ of
+      UpdateInputBox i1, UpdateInputBox i2 -> i1 == i2
+      SendMessage, SendMessage -> true
+      WebSocketOpened, WebSocketOpened -> true
+      SelectThreadRoot m1, SelectThreadRoot m2 -> m1 == m2
+      NewThread, NewThread -> true
+      SelectMessageParent m1, SelectMessageParent m2 -> m1 == m2
+      UpdateNameInput s1, UpdateNameInput s2 -> s1 == s2
+      UpdateName, UpdateName -> true
+      SelectSibling m1, SelectSibling m2 -> m1 == m2
+      NoOp, NoOp -> true
+      _, _ -> false
 
 type InputBox =
   { content :: String
@@ -249,67 +250,68 @@ update model@{ userId, convoId } =
         Just _, Nothing -> pure $ model2 { messageParent = model.thread }
         _, _ -> pure model2
 
-    TransmissionReceived mtc -> case mtc of
-      Just (ToClient_Broadcast events) ->
-        let
-          newEvents = addEvents model.state.events events
-          processedEvents = processEvents newEvents
+    TransmissionReceived mtc ->
+      case mtc of
+        Just (ToClient_Broadcast events) ->
+          let
+            newEvents = addEvents model.state.events events
+            processedEvents = processEvents newEvents
 
-          names :: Map (Id "User") String
-          names = processedEvents.names
+            names :: Map (Id "User") String
+            names = processedEvents.names
 
-          messages :: MessageTree
-          messages = processedEvents.messages
+            messages :: MessageTree
+            messages = processedEvents.messages
 
-          model2 =
-            model
-              { state = { events: newEvents, names, messages }
-              , nameInput =
-                  if model.nameInput == "" then
-                    Map.lookup userId names
-                    # fromMaybe ""
-                  else
-                    model.nameInput
-              , notifying = true
-              }
-          firstMessage :: Maybe Message
-          firstMessage =
-            splitEvents events
-            # _.messageEvents
-            # List.head
-            <#> _.message
-        in do
-        if model.notifying then
-          liftEffect
-          $ maybe (pure unit)
-              (\mes ->
-                 if mes.authorId == userId then
-                   pure unit
-                 else
-                  sendNotification
-                    (getName mes.authorId model2.state.names)
-                    mes.content
-              )
-              firstMessage
-        else
-          pure unit
-
-        case model.thread of
-          Just mid ->
-            let mleaf = TreeMap.findLeaf mid messages in
-            pure
-            $ model2
-                { thread = mleaf
-                , messageParent =
-                    if model.inputBox.content == "" then
-                      mleaf
+            model2 =
+              model
+                { state = { events: newEvents, names, messages }
+                , nameInput =
+                    if model.nameInput == "" then
+                      Map.lookup userId names
+                      # fromMaybe ""
                     else
-                      model.messageParent
+                      model.nameInput
+                , notifying = true
                 }
+            firstMessage :: Maybe Message
+            firstMessage =
+              splitEvents events
+              # _.messageEvents
+              # List.head
+              <#> _.message
+          in do
+          if model.notifying then
+            liftEffect
+            $ maybe (pure unit)
+                (\mes ->
+                   if mes.authorId == userId then
+                     pure unit
+                   else
+                    sendNotification
+                      (getName mes.authorId model2.state.names)
+                      mes.content
+                )
+                firstMessage
+          else
+            pure unit
 
-          Nothing -> pure model2
+          case model.thread of
+            Just mid ->
+              let mleaf = TreeMap.findLeaf mid messages in
+              pure
+              $ model2
+                  { thread = mleaf
+                  , messageParent =
+                      if model.inputBox.content == "" then
+                        mleaf
+                      else
+                        model.messageParent
+                  }
 
-      Nothing -> pure model
+            Nothing -> pure model2
+
+        Nothing -> pure model
 
     WebSocketOpened -> do
       liftEffect do
