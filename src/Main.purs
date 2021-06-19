@@ -602,10 +602,7 @@ threadView model =
                           , C.paddingTop "1px"
                           ]
                           []
-                          [ H.text
-                            $ (Map.lookup mes.authorId model.state.names
-                               # fromMaybe "<anonymous>"
-                              )
+                          [ H.text $ getName mes.authorId model.state.names
                           , getParent mes model.state.messages
                             <#> formatTimeDiff <. _.timeSent ~$ mes.timeSent
                             # maybe mempty
@@ -640,6 +637,9 @@ threadView model =
                ]
                []
                messagesHtml
+
+getName :: Id "User" -> Map (Id "User") String -> String
+getName id names = Map.lookup id names # fromMaybe "<anonymous>"
 
 foreign import dateString :: Number -> String
 
