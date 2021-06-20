@@ -120,7 +120,6 @@ data Msg
   | UpdateNameInput String
   | UpdateName
   | SelectSibling (Id "Message")
-  | NoOp
 
 instance Eq Msg where
   eq =
@@ -134,7 +133,6 @@ instance Eq Msg where
       UpdateNameInput s1, UpdateNameInput s2 -> s1 == s2
       UpdateName, UpdateName -> true
       SelectSibling m1, SelectSibling m2 -> m1 == m2
-      NoOp, NoOp -> true
       _, _ -> false
 
 type InputBox =
@@ -312,9 +310,6 @@ update model@{ userId, convoId } =
         Ws.transmit (ToServer_Subscribe { userId, convoId }) model.wsClient
         Ws.transmit (ToServer_Pull { convoId }) model.wsClient
       pure model
-
-    NoOp -> pure model
-
 
 pushEvent :: ∀ a r.
   { convoId :: Id "Convo"
