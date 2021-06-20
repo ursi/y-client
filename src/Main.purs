@@ -42,6 +42,7 @@ foreign import initialize_f :: ∀ a b r.  (Id a -> Id b -> r) -> Id a -> Id b -
 foreign import getHostname :: Effect String
 foreign import sendNotification :: String -> String -> Effect Unit
 foreign import notificationsPermission :: Effect Unit
+foreign import hasFocus :: Effect Boolean
 
 main :: Program Unit Model Msg
 main = do
@@ -61,6 +62,7 @@ type Model =
   , thread :: Maybe Leaf
   , messageParent :: Maybe (Id "Message")
   , nameInput :: String
+  , unread :: Boolean
   }
 
 type Leaf = (Id "Message")
@@ -108,6 +110,7 @@ init _ = do
     , thread: Nothing
     , messageParent: Nothing
     , nameInput: ""
+    , unread: false
     }
 
 data Msg
@@ -121,6 +124,7 @@ data Msg
   | UpdateNameInput String
   | UpdateName
   | SelectSibling (Id "Message")
+  | Focused
 
 instance Eq Msg where
   eq =
@@ -134,6 +138,7 @@ instance Eq Msg where
       UpdateNameInput s1, UpdateNameInput s2 -> s1 == s2
       UpdateName, UpdateName -> true
       SelectSibling m1, SelectSibling m2 -> m1 == m2
+      Focused, Focused -> true
       _, _ -> false
 
 type InputBox =
@@ -157,6 +162,8 @@ update model@{ userId, convoId } =
         >>= maybe (pure unit) (HTML.focus {})
   in
   case _ of
+    Focused -> pure $ model { unread = false }
+
     SelectSibling mid -> do
       focusInput
 
@@ -253,7 +260,9 @@ update model@{ userId, convoId } =
 
     TransmissionReceived mtc ->
       case mtc of
-        Just (ToClient_Broadcast events) ->
+        Just (ToClient_Broadcast events) -> do
+          focused <- liftEffect hasFocus
+
           let
             newEvents = addEvents model.state.events events
             processedEvents = processEvents newEvents
@@ -273,14 +282,16 @@ update model@{ userId, convoId } =
                       # fromMaybe ""
                     else
                       model.nameInput
+                , unread = if focused then false else true
                 }
+
             firstMessage :: Maybe Message
             firstMessage =
               splitEvents events
               # _.messageEvents
               # List.head
               <#> _.message
-          in do
+
           liftEffect
             (maybe (pure unit)
                (\mes ->
@@ -429,7 +440,11 @@ subscriptions model =
   batch
     [ wsToSub TransmissionReceived model.wsClient
     , Sub.on "keydown" hitEnter
+    , Sub.on "focus" focusHandler
     ]
+
+focusHandler :: HTML.Event -> Effect (Maybe Msg)
+focusHandler _ = pure $ Just Focused
 
 hitEnter :: HTML.Event -> Effect (Maybe Msg)
 hitEnter =
@@ -462,7 +477,7 @@ view ::
      , body :: Array (Html Msg)
      }
 view model =
-  { head: [ H.title "⅄" ]
+  { head: [ H.title $ "⅄" <> if model.unread then " (unread messages)" else "" ]
   , body:
       [ Ds.staticStyles
       , H.divS
