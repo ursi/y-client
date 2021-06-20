@@ -27,6 +27,7 @@ varRec =
     , color: values.gray1
     , lighterBackground22: makeBackground 22
     , lighterBackground32: makeBackground 32
+    , lighterBackground60: makeBackground 60
     }
 
 makeBackground :: Int -> String
@@ -69,7 +70,7 @@ staticStyles =
     , CG.rule "::-webkit-scrollbar"
         [ C.visibility "hidden" ]
     , CG.rule "::-webkit-scrollbar-thumb"
-        [ C.background vars.accent1
+        [ C.background vars.lighterBackground60
         , C.borderRadius "4px"
         ]
     , CG.rule "::-webkit-scrollbar-track"
