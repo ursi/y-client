@@ -8041,7 +8041,8 @@ var PS = {};
       background: makeBackground(12),
       color: values.gray1,
       lighterBackground22: makeBackground(22),
-      lighterBackground32: makeBackground(32)
+      lighterBackground32: makeBackground(32),
+      lighterBackground60: makeBackground(60)
   });
   var vars = Css_Variables.mkVarValues(Heterogeneous_Mapping.hmapRecord()(Heterogeneous_Mapping.mapRecordWithIndexNil))(Heterogeneous_Mapping.hmapWithIndexRecord()(Heterogeneous_Mapping.mapRecordWithIndexCons(new Data_Symbol.IsSymbol(function () {
       return "accent1";
@@ -8076,6 +8077,10 @@ var PS = {};
   }))(Css_Variables_Internal["$_MappingWithIndexMapIndexP_5"](new Data_Symbol.IsSymbol(function () {
       return "lighterBackground32";
   })))(Heterogeneous_Mapping.mapRecordWithIndexCons(new Data_Symbol.IsSymbol(function () {
+      return "lighterBackground60";
+  }))(Css_Variables_Internal["$_MappingWithIndexMapIndexP_5"](new Data_Symbol.IsSymbol(function () {
+      return "lighterBackground60";
+  })))(Heterogeneous_Mapping.mapRecordWithIndexCons(new Data_Symbol.IsSymbol(function () {
       return "purple1";
   }))(Css_Variables_Internal["$_MappingWithIndexMapIndexP_5"](new Data_Symbol.IsSymbol(function () {
       return "purple1";
@@ -8083,8 +8088,8 @@ var PS = {};
       return "saturation1";
   }))(Css_Variables_Internal["$_MappingWithIndexMapIndexP_5"](new Data_Symbol.IsSymbol(function () {
       return "saturation1";
-  })))(Heterogeneous_Mapping.mapRecordWithIndexNil)()())()())()())()())()())()())()())()())()())()()))()()({})(varRec);
-  var staticStyles = Css_Global.style([ Css_Global.body([ Css_Variables.mkVarStyles()(varRec), Css.margin("0"), Css.fontFamily("monospace"), Css.background(vars.background), Css.color(vars.color) ]), Css_Global.button([ Css.background(vars.lighterBackground32), Css.color(vars.color), Css.border("none"), Css.variable("padding")("4px"), Css.paddingTop(Css_Functions["var"]("padding")), Css.paddingBottom(Css_Functions["var"]("padding")), Css.fontFamily("monospace") ]), Css_Global.rule("::-webkit-scrollbar")([ Css.visibility("hidden") ]), Css_Global.rule("::-webkit-scrollbar-thumb")([ Css.background(vars.accent1), Css.borderRadius("4px") ]), Css_Global.rule("::-webkit-scrollbar-track")([ Css.background(vars.lighterBackground22) ]) ]);
+  })))(Heterogeneous_Mapping.mapRecordWithIndexNil)()())()())()())()())()())()())()())()())()())()())()()))()()({})(varRec);
+  var staticStyles = Css_Global.style([ Css_Global.body([ Css_Variables.mkVarStyles()(varRec), Css.margin("0"), Css.fontFamily("monospace"), Css.background(vars.background), Css.color(vars.color) ]), Css_Global.button([ Css.background(vars.lighterBackground32), Css.color(vars.color), Css.border("none"), Css.variable("padding")("4px"), Css.paddingTop(Css_Functions["var"]("padding")), Css.paddingBottom(Css_Functions["var"]("padding")), Css.fontFamily("monospace") ]), Css_Global.rule("::-webkit-scrollbar")([ Css.visibility("hidden") ]), Css_Global.rule("::-webkit-scrollbar-thumb")([ Css.background(vars.lighterBackground60), Css.borderRadius("4px") ]), Css_Global.rule("::-webkit-scrollbar-track")([ Css.background(vars.lighterBackground22) ]) ]);
   var inputStyles = Platform.batch([ Css.outline("none"), Css.background(vars.lighterBackground22), Css.color(vars.color), Css.fontFamily("monospace") ]);
   var inputBoxBorderWidth = 1.0;
   var following = Css.mapSelector(Css.prepend("* + "));
