@@ -20,3 +20,5 @@ exports.sendNotification = person => message => () => {
 };
 
 exports.notificationsPermission = () => Notification.requestPermission();
+
+exports.isSelecting = () => getSelection().type === `Range`;

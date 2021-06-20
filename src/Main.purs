@@ -19,6 +19,7 @@ import Html (Html)
 import Html as H
 import Platform (Cmd(..), Program, Update, afterRender, batch, tell)
 import Platform as Platform
+import Producer as P
 import RefEq (RefEq(..))
 import Sub (Sub)
 import Sub as Sub
@@ -118,7 +119,6 @@ data Msg
   | UpdateNameInput String
   | UpdateName
   | SelectSibling (Id "Message")
-  | NoOp
 
 instance Eq Msg where
   eq =
@@ -132,7 +132,6 @@ instance Eq Msg where
       UpdateNameInput s1, UpdateNameInput s2 -> s1 == s2
       UpdateName, UpdateName -> true
       SelectSibling m1, SelectSibling m2 -> m1 == m2
-      NoOp, NoOp -> true
       _, _ -> false
 
 type InputBox =
@@ -156,12 +155,15 @@ update model@{ userId, convoId } =
         >>= maybe (pure unit) (HTML.focus {})
   in
   case _ of
-    SelectSibling mid ->
+    SelectSibling mid -> do
+      focusInput
+
       pure
-      $ model
-          { messageParent = Just mid
-          , thread = TreeMap.findLeaf mid model.state.messages
-          }
+        (model
+           { messageParent = Just mid
+           , thread = TreeMap.findLeaf mid model.state.messages
+           }
+        )
 
     UpdateName -> do
       liftEffect do
@@ -177,7 +179,9 @@ update model@{ userId, convoId } =
 
     UpdateNameInput str -> pure $ model { nameInput = str }
 
-    SelectMessageParent mid -> pure $ model { messageParent = Just mid }
+    SelectMessageParent mid -> do
+      focusInput
+      pure $ model { messageParent = Just mid }
 
     NewThread -> do
       focusInput
@@ -310,9 +314,6 @@ update model@{ userId, convoId } =
         Ws.transmit (ToServer_Subscribe { userId, convoId }) model.wsClient
         Ws.transmit (ToServer_Pull { convoId }) model.wsClient
       pure model
-
-    NoOp -> pure model
-
 
 pushEvent :: ∀ a r.
   { convoId :: Id "Convo"
@@ -528,7 +529,7 @@ threadBar model =
                   , C.whiteSpace "pre-wrap"
                   , C.overflow "auto"
                   ]
-                  [ A.onClick $ SelectThreadRoot mid ]
+                  [ onNotSelectingClick $ SelectThreadRoot mid ]
                   [ H.text mes ]
     ]
 
@@ -598,7 +599,7 @@ threadView model =
                       , C.paddingBottom "6px"
                       , styles
                       ]
-                      [ A.onClick
+                      [ onNotSelectingClick
                         $ (if isSibling then SelectSibling else SelectMessageParent)
                             mes.id
                       ]
@@ -729,3 +730,19 @@ detectSendMessage =
            pure $ Just SendMessage
          else
            pure Nothing
+
+foreign import isSelecting :: Effect Boolean
+
+onNotSelectingClick :: Msg -> Attribute Msg
+onNotSelectingClick =
+  A.on "click" <. P.producer onNotSelectingClickRE
+
+onNotSelectingClickRE :: Msg -> HTML.Event -> Effect (Maybe Msg)
+onNotSelectingClickRE msg =
+  \_ -> do
+    selecting <- isSelecting
+
+    if selecting then
+      pure Nothing
+    else
+      pure $ Just msg
