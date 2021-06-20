@@ -66,6 +66,14 @@ staticStyles =
         , C.paddingBottom $ CF.var "padding"
         , C.fontFamily "monospace"
         ]
+    , CG.rule "::-webkit-scrollbar"
+        [ C.visibility "hidden" ]
+    , CG.rule "::-webkit-scrollbar-thumb"
+        [ C.background vars.accent1
+        , C.borderRadius "4px"
+        ]
+    , CG.rule "::-webkit-scrollbar-track"
+        [ C.background vars.lighterBackground22 ]
     ]
 
 panel :: Styles
