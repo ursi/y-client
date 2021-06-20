@@ -1,4 +1,3 @@
-- set the title of the page and make it different if you have unread messages
 - some way to pin messages
 - some way to give context to threads instead of just the last message
 - message searching

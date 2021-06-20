@@ -22,3 +22,5 @@ exports.sendNotification = person => message => () => {
 exports.notificationsPermission = () => Notification.requestPermission();
 
 exports.isSelecting = () => getSelection().type === `Range`;
+
+exports.hasFocus = () => document.hasFocus();
