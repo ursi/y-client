@@ -19,6 +19,7 @@ import Html (Html)
 import Html as H
 import Platform (Cmd(..), Program, Update, afterRender, batch, tell)
 import Platform as Platform
+import Producer as P
 import RefEq (RefEq(..))
 import Sub (Sub)
 import Sub as Sub
@@ -525,7 +526,7 @@ threadBar model =
                   , C.whiteSpace "pre-wrap"
                   , C.overflow "auto"
                   ]
-                  [ A.onClick $ SelectThreadRoot mid ]
+                  [ onNotSelectingClick $ SelectThreadRoot mid ]
                   [ H.text mes ]
     ]
 
@@ -595,7 +596,7 @@ threadView model =
                       , C.paddingBottom "6px"
                       , styles
                       ]
-                      [ A.onClick
+                      [ onNotSelectingClick
                         $ (if isSibling then SelectSibling else SelectMessageParent)
                             mes.id
                       ]
@@ -726,3 +727,19 @@ detectSendMessage =
            pure $ Just SendMessage
          else
            pure Nothing
+
+foreign import isSelecting :: Effect Boolean
+
+onNotSelectingClick :: Msg -> Attribute Msg
+onNotSelectingClick =
+  A.on "click" <. P.producer onNotSelectingClickRE
+
+onNotSelectingClickRE :: Msg -> HTML.Event -> Effect (Maybe Msg)
+onNotSelectingClickRE msg =
+  \_ -> do
+    selecting <- isSelecting
+
+    if selecting then
+      pure Nothing
+    else
+      pure $ Just msg
