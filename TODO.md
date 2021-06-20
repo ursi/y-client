@@ -7,3 +7,4 @@
 - hide 1-off leaves so they don't clutter the thread bar but still allow replies to old message to be discoverable
 - message links
 - add sound to notification
+- make it so highlighting is not seen as a click

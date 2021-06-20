@@ -705,25 +705,27 @@ inputWithHeight =
   A.on "input"
   $ HTML.unsafeTarget
   .> HTML.toMaybeHTMLTextAreaElement
-  .> maybe (pure NoOp) \elem ->
-      lift2
-        (\content height ->
-           UpdateInputBox
-             { content
-             , height: height + Ds.inputBoxBorderWidth
-             }
-        )
-        (TextArea.value elem)
-        (toNumber <$> HTML.scrollHeight elem)
+  .> maybe (pure Nothing)
+       \elem ->
+         lift2
+           (\content height ->
+              Just
+              $ UpdateInputBox
+                  { content
+                  , height: height + Ds.inputBoxBorderWidth
+                  }
+           )
+           (TextArea.value elem)
+           (toNumber <$> HTML.scrollHeight elem)
 
 detectSendMessage :: Attribute Msg
 detectSendMessage =
   A.on "keydown"
   $ HTML.toMaybeKeyboardEvent
-  .> maybe (pure NoOp)
+  .> maybe (pure Nothing)
        \kbe ->
          if HTML.key kbe == "Enter" && (HTML.ctrlKey kbe || HTML.metaKey kbe) then do
            HTML.preventDefault kbe
-           pure SendMessage
+           pure $ Just SendMessage
          else
-           pure NoOp
+           pure Nothing
