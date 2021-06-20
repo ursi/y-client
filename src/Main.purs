@@ -157,12 +157,15 @@ update model@{ userId, convoId } =
         >>= maybe (pure unit) (HTML.focus {})
   in
   case _ of
-    SelectSibling mid ->
+    SelectSibling mid -> do
+      focusInput
+
       pure
-      $ model
-          { messageParent = Just mid
-          , thread = TreeMap.findLeaf mid model.state.messages
-          }
+        (model
+           { messageParent = Just mid
+           , thread = TreeMap.findLeaf mid model.state.messages
+           }
+        )
 
     UpdateName -> do
       liftEffect do
@@ -178,7 +181,9 @@ update model@{ userId, convoId } =
 
     UpdateNameInput str -> pure $ model { nameInput = str }
 
-    SelectMessageParent mid -> pure $ model { messageParent = Just mid }
+    SelectMessageParent mid -> do
+      focusInput
+      pure $ model { messageParent = Just mid }
 
     NewThread -> do
       focusInput
