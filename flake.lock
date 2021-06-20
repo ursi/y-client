@@ -52,11 +52,11 @@
         "utils": "utils"
       },
       "locked": {
-        "lastModified": 1624076699,
-        "narHash": "sha256-LwJqqDR/YV/rOo7TOHzkGI8xwr2q3Ueb86UjcEb6ViM=",
+        "lastModified": 1624147917,
+        "narHash": "sha256-USmq/ZjH2CBs0FYcWbOBO7KBK0VY4FiryxvWLxoY0z0=",
         "owner": "ursi",
         "repo": "purs-nix",
-        "rev": "2d26e1cffdbfe7d51b2d58d3241067bc5663a45e",
+        "rev": "269519b77c9102784b710f57183fffa6b769752d",
         "type": "github"
       },
       "original": {
