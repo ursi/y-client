@@ -37,7 +37,7 @@
                       (build
                          { name = "websocket";
                            inherit (y-repo) repo rev;
-                           src = " . ; mkdir $out; cp client/src/WebSocket.* $out; :";
+                           install = "mkdir $out; cp client/src/WebSocket.* $out";
                          }
                       )
                     ];
