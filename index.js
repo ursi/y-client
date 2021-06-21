@@ -6257,12 +6257,6 @@ var PS = {};
   var HMapWithIndex = function (hmapWithIndex) {
       this.hmapWithIndex = hmapWithIndex;
   };
-  var HMap = function (hmap) {
-      this.hmap = hmap;
-  };
-  var ConstMapping = function (x) {
-      return x;
-  };
   var mappingWithIndex = function (dict) {
       return dict.mappingWithIndex;
   };
@@ -6302,23 +6296,8 @@ var PS = {};
   var hmapWithIndex = function (dict) {
       return dict.hmapWithIndex;
   };
-  var hmapRecord = function (dictRowToList) {
-      return function (dictMapRecordWithIndex) {
-          return new HMap((function () {
-              var $77 = mapRecordWithIndexBuilder(dictMapRecordWithIndex)(Type_Proxy["Proxy"].value);
-              return function ($78) {
-                  return Record_Builder.build($77(ConstMapping($78)));
-              };
-          })());
-      };
-  };
-  var hmap = function (dict) {
-      return dict.hmap;
-  };
-  exports["hmap"] = hmap;
   exports["hmapWithIndex"] = hmapWithIndex;
   exports["MappingWithIndex"] = MappingWithIndex;
-  exports["hmapRecord"] = hmapRecord;
   exports["hmapWithIndexRecord"] = hmapWithIndexRecord;
   exports["mapRecordWithIndexCons"] = mapRecordWithIndexCons;
   exports["mapRecordWithIndexNil"] = mapRecordWithIndexNil;
@@ -6331,18 +6310,6 @@ var PS = {};
   var Data_Symbol = $PS["Data.Symbol"];
   var Heterogeneous_Mapping = $PS["Heterogeneous.Mapping"];
   var Type_Proxy = $PS["Type.Proxy"];                
-  var Retrieve = (function () {
-      function Retrieve(value0, value1) {
-          this.value0 = value0;
-          this.value1 = value1;
-      };
-      Retrieve.create = function (value0) {
-          return function (value1) {
-              return new Retrieve(value0, value1);
-          };
-      };
-      return Retrieve;
-  })();
   var MapIndex = (function () {
       function MapIndex(value0) {
           this.value0 = value0;
@@ -6352,7 +6319,7 @@ var PS = {};
       };
       return MapIndex;
   })();
-  var $dollar_MappingWithIndexMapIndexP_5 = function (dictIsSymbol) {
+  var $dollar_MappingWithIndexMapIndexP_3 = function (dictIsSymbol) {
       return new Heterogeneous_Mapping.MappingWithIndex(function (v) {
           return function (v1) {
               return function (v2) {
@@ -6361,9 +6328,8 @@ var PS = {};
           };
       });
   };
-  exports["Retrieve"] = Retrieve;
   exports["MapIndex"] = MapIndex;
-  exports["$_MappingWithIndexMapIndexP_5"] = $dollar_MappingWithIndexMapIndexP_5;
+  exports["$_MappingWithIndexMapIndexP_3"] = $dollar_MappingWithIndexMapIndexP_3;
 })(PS);
 (function(exports) {
   "use strict";
@@ -6504,15 +6470,6 @@ var PS = {};
   var Data_Symbol = $PS["Data.Symbol"];
   var Record_Unsafe = $PS["Record.Unsafe"];
   var Record_Unsafe_Union = $PS["Record.Unsafe.Union"];
-  var merge = function (dictUnion) {
-      return function (dictNub) {
-          return function (l) {
-              return function (r) {
-                  return Record_Unsafe_Union.unsafeUnionFn(l, r);
-              };
-          };
-      };
-  };
   var insert = function (dictIsSymbol) {
       return function (dictLacks) {
           return function (dictCons) {
@@ -6546,7 +6503,6 @@ var PS = {};
   };
   exports["get"] = get;
   exports["insert"] = insert;
-  exports["merge"] = merge;
   exports["disjointUnion"] = disjointUnion;
 })(PS);
 (function($PS) {
@@ -6564,26 +6520,27 @@ var PS = {};
   var Foreign_Object = $PS["Foreign.Object"];
   var Heterogeneous_Mapping = $PS["Heterogeneous.Mapping"];
   var Record = $PS["Record"];                
-  var mkVarValues = function (dictHMap) {
+  var makeVariables = function (dictUnion) {
       return function (dictHMapWithIndex) {
-          return function (dictUnion) {
-              return function (dictNub) {
-                  return function (aliases) {
-                      return function (vars) {
-                          return Record.merge()()(Heterogeneous_Mapping.hmap(dictHMap)(new Css_Variables_Internal.Retrieve(vars, Css_Functions["var"]))(aliases))(Heterogeneous_Mapping.hmapWithIndex(dictHMapWithIndex)(new Css_Variables_Internal.MapIndex(Css_Functions["var"]))(vars));
+          return function (dictHMapWithIndex1) {
+              return function (dictHomogeneous) {
+                  return function (dictNub) {
+                      return function (values) {
+                          return function (fromVars) {
+                              var valVars = Heterogeneous_Mapping.hmapWithIndex(dictHMapWithIndex)(new Css_Variables_Internal.MapIndex(Css_Functions["var"]))(values);
+                              var raw = Record.disjointUnion()()(values)(fromVars(valVars));
+                              return {
+                                  styles: Data_Batched.Batch.create(Data_Functor.mapFlipped(Data_Functor.functorArray)(Foreign_Object.toUnfoldable(Data_Unfoldable.unfoldableArray)(Foreign_Object.fromHomogeneous()(raw)))(Data_Tuple.uncurry(Css.variable))),
+                                  values: Heterogeneous_Mapping.hmapWithIndex(dictHMapWithIndex1)(new Css_Variables_Internal.MapIndex(Css_Functions["var"]))(raw)
+                              };
+                          };
                       };
                   };
               };
           };
       };
   };
-  var mkVarStyles = function (dictHomogeneous) {
-      return function (vars) {
-          return Data_Batched.Batch.create(Data_Functor.mapFlipped(Data_Functor.functorArray)(Foreign_Object.toUnfoldable(Data_Unfoldable.unfoldableArray)(Foreign_Object.fromHomogeneous()(vars)))(Data_Tuple.uncurry(Css.variable)));
-      };
-  };
-  exports["mkVarStyles"] = mkVarStyles;
-  exports["mkVarValues"] = mkVarValues;
+  exports["makeVariables"] = makeVariables;
 })(PS);
 (function(exports) {
   /* eslint-disable no-eq-null, eqeqeq */
@@ -8002,94 +7959,93 @@ var PS = {};
   var Data_Show = $PS["Data.Show"];
   var Data_Symbol = $PS["Data.Symbol"];
   var Heterogeneous_Mapping = $PS["Heterogeneous.Mapping"];
-  var Platform = $PS["Platform"];
-  var Record = $PS["Record"];                
-  var values = {
+  var Platform = $PS["Platform"];                
+  var sv = Css_Variables.makeVariables()(Heterogeneous_Mapping.hmapWithIndexRecord()(Heterogeneous_Mapping.mapRecordWithIndexCons(new Data_Symbol.IsSymbol(function () {
+      return "borderWidth1";
+  }))(Css_Variables_Internal["$_MappingWithIndexMapIndexP_3"](new Data_Symbol.IsSymbol(function () {
+      return "borderWidth1";
+  })))(Heterogeneous_Mapping.mapRecordWithIndexCons(new Data_Symbol.IsSymbol(function () {
+      return "gray1";
+  }))(Css_Variables_Internal["$_MappingWithIndexMapIndexP_3"](new Data_Symbol.IsSymbol(function () {
+      return "gray1";
+  })))(Heterogeneous_Mapping.mapRecordWithIndexCons(new Data_Symbol.IsSymbol(function () {
+      return "hue1";
+  }))(Css_Variables_Internal["$_MappingWithIndexMapIndexP_3"](new Data_Symbol.IsSymbol(function () {
+      return "hue1";
+  })))(Heterogeneous_Mapping.mapRecordWithIndexCons(new Data_Symbol.IsSymbol(function () {
+      return "purple1";
+  }))(Css_Variables_Internal["$_MappingWithIndexMapIndexP_3"](new Data_Symbol.IsSymbol(function () {
+      return "purple1";
+  })))(Heterogeneous_Mapping.mapRecordWithIndexCons(new Data_Symbol.IsSymbol(function () {
+      return "saturation1";
+  }))(Css_Variables_Internal["$_MappingWithIndexMapIndexP_3"](new Data_Symbol.IsSymbol(function () {
+      return "saturation1";
+  })))(Heterogeneous_Mapping.mapRecordWithIndexNil)()())()())()())()())()()))(Heterogeneous_Mapping.hmapWithIndexRecord()(Heterogeneous_Mapping.mapRecordWithIndexCons(new Data_Symbol.IsSymbol(function () {
+      return "accent1";
+  }))(Css_Variables_Internal["$_MappingWithIndexMapIndexP_3"](new Data_Symbol.IsSymbol(function () {
+      return "accent1";
+  })))(Heterogeneous_Mapping.mapRecordWithIndexCons(new Data_Symbol.IsSymbol(function () {
+      return "background";
+  }))(Css_Variables_Internal["$_MappingWithIndexMapIndexP_3"](new Data_Symbol.IsSymbol(function () {
+      return "background";
+  })))(Heterogeneous_Mapping.mapRecordWithIndexCons(new Data_Symbol.IsSymbol(function () {
+      return "borderWidth1";
+  }))(Css_Variables_Internal["$_MappingWithIndexMapIndexP_3"](new Data_Symbol.IsSymbol(function () {
+      return "borderWidth1";
+  })))(Heterogeneous_Mapping.mapRecordWithIndexCons(new Data_Symbol.IsSymbol(function () {
+      return "color";
+  }))(Css_Variables_Internal["$_MappingWithIndexMapIndexP_3"](new Data_Symbol.IsSymbol(function () {
+      return "color";
+  })))(Heterogeneous_Mapping.mapRecordWithIndexCons(new Data_Symbol.IsSymbol(function () {
+      return "gray1";
+  }))(Css_Variables_Internal["$_MappingWithIndexMapIndexP_3"](new Data_Symbol.IsSymbol(function () {
+      return "gray1";
+  })))(Heterogeneous_Mapping.mapRecordWithIndexCons(new Data_Symbol.IsSymbol(function () {
+      return "hue1";
+  }))(Css_Variables_Internal["$_MappingWithIndexMapIndexP_3"](new Data_Symbol.IsSymbol(function () {
+      return "hue1";
+  })))(Heterogeneous_Mapping.mapRecordWithIndexCons(new Data_Symbol.IsSymbol(function () {
+      return "lighterBackground22";
+  }))(Css_Variables_Internal["$_MappingWithIndexMapIndexP_3"](new Data_Symbol.IsSymbol(function () {
+      return "lighterBackground22";
+  })))(Heterogeneous_Mapping.mapRecordWithIndexCons(new Data_Symbol.IsSymbol(function () {
+      return "lighterBackground32";
+  }))(Css_Variables_Internal["$_MappingWithIndexMapIndexP_3"](new Data_Symbol.IsSymbol(function () {
+      return "lighterBackground32";
+  })))(Heterogeneous_Mapping.mapRecordWithIndexCons(new Data_Symbol.IsSymbol(function () {
+      return "lighterBackground60";
+  }))(Css_Variables_Internal["$_MappingWithIndexMapIndexP_3"](new Data_Symbol.IsSymbol(function () {
+      return "lighterBackground60";
+  })))(Heterogeneous_Mapping.mapRecordWithIndexCons(new Data_Symbol.IsSymbol(function () {
+      return "purple1";
+  }))(Css_Variables_Internal["$_MappingWithIndexMapIndexP_3"](new Data_Symbol.IsSymbol(function () {
+      return "purple1";
+  })))(Heterogeneous_Mapping.mapRecordWithIndexCons(new Data_Symbol.IsSymbol(function () {
+      return "saturation1";
+  }))(Css_Variables_Internal["$_MappingWithIndexMapIndexP_3"](new Data_Symbol.IsSymbol(function () {
+      return "saturation1";
+  })))(Heterogeneous_Mapping.mapRecordWithIndexNil)()())()())()())()())()())()())()())()())()())()())()()))()()({
       borderWidth1: "1px",
       hue1: "0",
       gray1: "#e6e6e6",
       purple1: "#634372",
       saturation1: "0%"
-  };
-  var valVars = Css_Variables.mkVarValues(Heterogeneous_Mapping.hmapRecord()(Heterogeneous_Mapping.mapRecordWithIndexNil))(Heterogeneous_Mapping.hmapWithIndexRecord()(Heterogeneous_Mapping.mapRecordWithIndexCons(new Data_Symbol.IsSymbol(function () {
-      return "borderWidth1";
-  }))(Css_Variables_Internal["$_MappingWithIndexMapIndexP_5"](new Data_Symbol.IsSymbol(function () {
-      return "borderWidth1";
-  })))(Heterogeneous_Mapping.mapRecordWithIndexCons(new Data_Symbol.IsSymbol(function () {
-      return "gray1";
-  }))(Css_Variables_Internal["$_MappingWithIndexMapIndexP_5"](new Data_Symbol.IsSymbol(function () {
-      return "gray1";
-  })))(Heterogeneous_Mapping.mapRecordWithIndexCons(new Data_Symbol.IsSymbol(function () {
-      return "hue1";
-  }))(Css_Variables_Internal["$_MappingWithIndexMapIndexP_5"](new Data_Symbol.IsSymbol(function () {
-      return "hue1";
-  })))(Heterogeneous_Mapping.mapRecordWithIndexCons(new Data_Symbol.IsSymbol(function () {
-      return "purple1";
-  }))(Css_Variables_Internal["$_MappingWithIndexMapIndexP_5"](new Data_Symbol.IsSymbol(function () {
-      return "purple1";
-  })))(Heterogeneous_Mapping.mapRecordWithIndexCons(new Data_Symbol.IsSymbol(function () {
-      return "saturation1";
-  }))(Css_Variables_Internal["$_MappingWithIndexMapIndexP_5"](new Data_Symbol.IsSymbol(function () {
-      return "saturation1";
-  })))(Heterogeneous_Mapping.mapRecordWithIndexNil)()())()())()())()())()()))()()({})(values);
-  var panel = Platform.batch([ Css.display("grid"), Css.gridAutoRows("fit-content(100%)") ]);
-  var makeBackground = function (percent) {
-      return Css_Functions.hsl(valVars.hue1)(valVars.saturation1)(Data_Show.show(Data_Show.showInt)(percent) + "%");
-  };
-  var varRec = Record.disjointUnion()()(values)({
-      accent1: valVars.purple1,
-      background: makeBackground(12),
-      color: values.gray1,
-      lighterBackground22: makeBackground(22),
-      lighterBackground32: makeBackground(32),
-      lighterBackground60: makeBackground(60)
+  })(function (r) {
+      var makeBackground = function (percent) {
+          return Css_Functions.hsl(r.hue1)(r.saturation1)(Data_Show.show(Data_Show.showInt)(percent) + "%");
+      };
+      return {
+          accent1: r.purple1,
+          background: makeBackground(12),
+          color: r.gray1,
+          lighterBackground22: makeBackground(22),
+          lighterBackground32: makeBackground(32),
+          lighterBackground60: makeBackground(60)
+      };
   });
-  var vars = Css_Variables.mkVarValues(Heterogeneous_Mapping.hmapRecord()(Heterogeneous_Mapping.mapRecordWithIndexNil))(Heterogeneous_Mapping.hmapWithIndexRecord()(Heterogeneous_Mapping.mapRecordWithIndexCons(new Data_Symbol.IsSymbol(function () {
-      return "accent1";
-  }))(Css_Variables_Internal["$_MappingWithIndexMapIndexP_5"](new Data_Symbol.IsSymbol(function () {
-      return "accent1";
-  })))(Heterogeneous_Mapping.mapRecordWithIndexCons(new Data_Symbol.IsSymbol(function () {
-      return "background";
-  }))(Css_Variables_Internal["$_MappingWithIndexMapIndexP_5"](new Data_Symbol.IsSymbol(function () {
-      return "background";
-  })))(Heterogeneous_Mapping.mapRecordWithIndexCons(new Data_Symbol.IsSymbol(function () {
-      return "borderWidth1";
-  }))(Css_Variables_Internal["$_MappingWithIndexMapIndexP_5"](new Data_Symbol.IsSymbol(function () {
-      return "borderWidth1";
-  })))(Heterogeneous_Mapping.mapRecordWithIndexCons(new Data_Symbol.IsSymbol(function () {
-      return "color";
-  }))(Css_Variables_Internal["$_MappingWithIndexMapIndexP_5"](new Data_Symbol.IsSymbol(function () {
-      return "color";
-  })))(Heterogeneous_Mapping.mapRecordWithIndexCons(new Data_Symbol.IsSymbol(function () {
-      return "gray1";
-  }))(Css_Variables_Internal["$_MappingWithIndexMapIndexP_5"](new Data_Symbol.IsSymbol(function () {
-      return "gray1";
-  })))(Heterogeneous_Mapping.mapRecordWithIndexCons(new Data_Symbol.IsSymbol(function () {
-      return "hue1";
-  }))(Css_Variables_Internal["$_MappingWithIndexMapIndexP_5"](new Data_Symbol.IsSymbol(function () {
-      return "hue1";
-  })))(Heterogeneous_Mapping.mapRecordWithIndexCons(new Data_Symbol.IsSymbol(function () {
-      return "lighterBackground22";
-  }))(Css_Variables_Internal["$_MappingWithIndexMapIndexP_5"](new Data_Symbol.IsSymbol(function () {
-      return "lighterBackground22";
-  })))(Heterogeneous_Mapping.mapRecordWithIndexCons(new Data_Symbol.IsSymbol(function () {
-      return "lighterBackground32";
-  }))(Css_Variables_Internal["$_MappingWithIndexMapIndexP_5"](new Data_Symbol.IsSymbol(function () {
-      return "lighterBackground32";
-  })))(Heterogeneous_Mapping.mapRecordWithIndexCons(new Data_Symbol.IsSymbol(function () {
-      return "lighterBackground60";
-  }))(Css_Variables_Internal["$_MappingWithIndexMapIndexP_5"](new Data_Symbol.IsSymbol(function () {
-      return "lighterBackground60";
-  })))(Heterogeneous_Mapping.mapRecordWithIndexCons(new Data_Symbol.IsSymbol(function () {
-      return "purple1";
-  }))(Css_Variables_Internal["$_MappingWithIndexMapIndexP_5"](new Data_Symbol.IsSymbol(function () {
-      return "purple1";
-  })))(Heterogeneous_Mapping.mapRecordWithIndexCons(new Data_Symbol.IsSymbol(function () {
-      return "saturation1";
-  }))(Css_Variables_Internal["$_MappingWithIndexMapIndexP_5"](new Data_Symbol.IsSymbol(function () {
-      return "saturation1";
-  })))(Heterogeneous_Mapping.mapRecordWithIndexNil)()())()())()())()())()())()())()())()())()())()())()()))()()({})(varRec);
-  var staticStyles = Css_Global.style([ Css_Global.body([ Css_Variables.mkVarStyles()(varRec), Css.margin("0"), Css.fontFamily("monospace"), Css.background(vars.background), Css.color(vars.color) ]), Css_Global.button([ Css.background(vars.lighterBackground32), Css.color(vars.color), Css.border("none"), Css.variable("padding")("4px"), Css.paddingTop(Css_Functions["var"]("padding")), Css.paddingBottom(Css_Functions["var"]("padding")), Css.fontFamily("monospace") ]), Css_Global.rule("::-webkit-scrollbar")([ Css.visibility("hidden") ]), Css_Global.rule("::-webkit-scrollbar-thumb")([ Css.background(vars.lighterBackground60), Css.borderRadius("4px") ]), Css_Global.rule("::-webkit-scrollbar-track")([ Css.background(vars.lighterBackground22) ]) ]);
+  var vars = sv.values;
+  var staticStyles = Css_Global.style([ Css_Global.body([ sv.styles, Css.margin("0"), Css.fontFamily("monospace"), Css.background(vars.background), Css.color(vars.color) ]), Css_Global.button([ Css.background(vars.lighterBackground32), Css.color(vars.color), Css.border("none"), Css.variable("padding")("4px"), Css.paddingTop(Css_Functions["var"]("padding")), Css.paddingBottom(Css_Functions["var"]("padding")), Css.fontFamily("monospace") ]), Css_Global.rule("::-webkit-scrollbar")([ Css.visibility("hidden") ]), Css_Global.rule("::-webkit-scrollbar-thumb")([ Css.background(vars.lighterBackground60), Css.borderRadius("4px") ]), Css_Global.rule("::-webkit-scrollbar-track")([ Css.background(vars.lighterBackground22) ]) ]);
+  var panel = Platform.batch([ Css.display("grid"), Css.gridAutoRows("fit-content(100%)") ]);
   var inputStyles = Platform.batch([ Css.outline("none"), Css.background(vars.lighterBackground22), Css.color(vars.color), Css.fontFamily("monospace") ]);
   var inputBoxBorderWidth = 1.0;
   var following = Css.mapSelector(Css.prepend("* + "));
@@ -8243,7 +8199,7 @@ var PS = {};
     return mk2Tuple(userId)(convoId);
   };
 
-  exports.dateString = Date
+  exports.dateString = ms => new Date(ms)
 
   exports.sendNotification = person => message => () => {
 	  if (!document.hasFocus())
