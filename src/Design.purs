@@ -63,10 +63,13 @@ staticStyles =
         , C.fontFamily "monospace"
         ]
     , CG.rule "::-webkit-scrollbar"
-        [ C.visibility "hidden" ]
+        [ C.variable "size" "10px"
+        , C.width $ CF.var "size"
+        , C.height $ CF.var "size"
+        ]
     , CG.rule "::-webkit-scrollbar-thumb"
         [ C.background vars.lighterBackground60
-        , C.borderRadius "4px"
+        , C.borderRadius "3px"
         ]
     , CG.rule "::-webkit-scrollbar-track"
         [ C.background vars.lighterBackground22 ]
