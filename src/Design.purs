@@ -14,45 +14,40 @@ import Css (Styles)
 import Css as C
 import Css.Functions as CF
 import Css.Global as CG
-import Css.Variables (mkVarStyles, mkVarValues)
+import Css.Variables (makeVariables)
 import Html (Html)
 import Platform (batch)
-import Record (disjointUnion)
 
-varRec =
-  disjointUnion
-    values
-    { accent1: valVars.purple1
-    , background: makeBackground 12
-    , color: values.gray1
-    , lighterBackground22: makeBackground 22
-    , lighterBackground32: makeBackground 32
-    , lighterBackground60: makeBackground 60
+sv =
+  makeVariables
+    { borderWidth1: "1px"
+    , hue1: "0"
+    , gray1: "#e6e6e6"
+    , purple1: "#634372"
+    , saturation1: "0%"
     }
+    \r ->
+      let
+        makeBackground :: Int -> String
+        makeBackground percent =
+          CF.hsl r.hue1 r.saturation1
+          $ show percent <> "%"
+      in
+      { accent1: r.purple1
+      , background: makeBackground 12
+      , color: r.gray1
+      , lighterBackground22: makeBackground 22
+      , lighterBackground32: makeBackground 32
+      , lighterBackground60: makeBackground 60
+      }
 
-makeBackground :: Int -> String
-makeBackground percent =
-  CF.hsl
-    valVars.hue1
-    valVars.saturation1
-  $ show percent <> "%"
-
-values =
-  { borderWidth1: "1px"
-  , hue1: "0"
-  , gray1: "#e6e6e6"
-  , purple1: "#634372"
-  , saturation1: "0%"
-  }
-
-valVars = mkVarValues {} values
-vars = mkVarValues {} varRec
+vars = sv.values
 
 staticStyles :: ∀ a. Html a
 staticStyles =
   CG.style
     [ CG.body
-        [ mkVarStyles varRec
+        [ sv.styles
         , C.margin "0"
         , C.fontFamily "monospace"
         , C.background vars.background
