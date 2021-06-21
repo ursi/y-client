@@ -657,6 +657,7 @@ threadView model =
                       , H.divS
                           [ C.whiteSpace "pre-wrap"
                           , C.position "relative"
+                          , C.overflowX "auto"
                           ]
                           []
                           [ H.text mes.content ]
