@@ -13,6 +13,8 @@ import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Set as Set
+import Data.String.Utils (startsWith)
+import Data.String.CodePoints as String
 import Debug as Debug
 import Design as Ds
 import Html (Html)
@@ -242,6 +244,34 @@ update model@{ userId, convoId } =
              )
         )
         # fromMaybe (pure model)
+      else if startsWith "/edit " model.inputBox.content then
+        (do
+           mid <- model.messageParent
+           { value: mes } <- TreeMap.lookup mid model.state.messages
+
+           Just
+             (if mes.authorId == userId then do
+                liftEffect
+                  (pushEvent model
+                     \_ ->
+                       EventPayload_MessageEdit
+                         { convoId
+                         , messageId: mes.id
+                         , authorId: userId
+                         , content: String.drop 6 model.inputBox.content
+                         }
+                  )
+
+                pure (model { inputBox = defaultInputBox })
+              else
+                pure
+                $ model
+                    { inputBox =
+                        model.inputBox { content = "You didn't send that message!" }
+                    }
+             )
+        )
+        # fromMaybe (pure model)
       else do
         id :: Id "Message" <- liftEffect Id.new
 
@@ -275,12 +305,21 @@ update model@{ userId, convoId } =
              }
           )
 
-    UpdateInputBox ib ->
-      let model2 = model { inputBox = ib } in
-
-      case model.thread, model.messageParent of
-        Just _, Nothing -> pure $ model2 { messageParent = model.thread }
-        _, _ -> pure model2
+    UpdateInputBox ib@{ content } ->
+      if content == "/edit " then
+        pure
+        $ (do
+             mid <- model.messageParent
+             { value: mes } <- TreeMap.lookup mid model.state.messages
+             Just
+               if mes.deleted then
+                 model { inputBox = ib }
+               else
+                 model { inputBox = ib { content = "/edit " <> mes.content } }
+          )
+          # fromMaybe (model { inputBox = ib })
+      else
+        pure $ model { inputBox = ib }
 
     TransmissionReceived mtc ->
       case mtc of
@@ -440,6 +479,13 @@ processEvents =
              )
              initialTM
              events.messageDelete
+           # foldl
+               (\acc { messageId, content } ->
+                  acc
+                  # TreeMap.edit messageId
+                      \vpc -> vpc { value = vpc.value { content = content } }
+               )
+           ~$ events.messageEdit
        }
 
 splitEvents ::
@@ -454,6 +500,13 @@ splitEvents ::
          List
            { convoId :: Id "Convo"
            , message :: Message
+           }
+     , messageEdit ::
+         List
+           { convoId :: Id "Convo"
+           , messageId :: Id "Message"
+           , authorId :: Id "User"
+           , content :: String
            }
      , messageDelete ::
          List
@@ -472,15 +525,15 @@ splitEvents =
          EventPayload_MessageSend data' ->
            acc { messageSend = data' : acc.messageSend }
 
+         EventPayload_MessageEdit data' ->
+           acc { messageEdit = data' : acc.messageEdit }
+
          EventPayload_MessageDelete data' ->
            acc { messageDelete = data' : acc.messageDelete }
 
          _ -> acc
     )
-    { setName: Nil
-    , messageSend: Nil
-    , messageDelete: Nil
-    }
+    mempty
 
 toIVP :: Message -> IVP (Id "Message") Message
 toIVP value@{ id, depIds } =
