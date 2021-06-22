@@ -279,7 +279,7 @@ update model@{ userId, convoId } =
           )
 
     UpdateInputBox ib@{ content } ->
-      if startsWith "/edit " content then
+      if content == "/edit " then
         pure
         $ (do
              mid <- model.messageParent
