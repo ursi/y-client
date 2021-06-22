@@ -3,12 +3,18 @@ module TreeMap
   , VPC
   , Thread
   , TreeMap
+  , edit
   , empty
   , findLeaf
+  , findNewLeaf
   , getThread
   , getThreads
+  , isLeaf
   , leaves
   , lookup
+  , member
+  , removeLeaf
+  , removeLeafRecursive
   , toTreeMap
   )
   where
@@ -189,3 +195,108 @@ findLeaf id tm =
           Nothing -> Just id
 empty :: ∀ a b. TreeMap a b
 empty = TreeMap { leaves: Map.empty, parents: Map.empty }
+
+edit :: ∀ a b. Ord a => a -> (VPC a b -> VPC a b) -> TreeMap a b -> TreeMap a b
+edit key f tm@(TreeMap r) =
+  case Map.lookup key r.leaves of
+    Just vpc ->
+      TreeMap $ r { leaves = Map.insert key (f vpc) r.leaves }
+
+    Nothing ->
+      case Map.lookup key r.parents of
+        Just (Right vpc) ->
+          TreeMap $ r { parents = Map.insert key (Right (f vpc)) r.parents }
+
+        _ -> tm
+
+isLeaf :: ∀ a b. Ord a => a -> TreeMap a b -> Boolean
+isLeaf key tm =
+  lookup key tm
+  # maybe false (_.children .> Array.null)
+
+type Move = Boolean
+
+removeLeaf :: ∀ a b. Ord a => a -> TreeMap a b -> TreeMap a b
+removeLeaf key tm@(TreeMap r) =
+  case Map.lookup key r.leaves of
+    Just vpc ->
+      let
+        potentialNewLeaves = Map.delete key r.leaves
+
+        newParentData :: Maybe (Move /\ a /\ Either (Array a) (VPC a b))
+        newParentData =
+          vpc.parent
+          <#> \pid ->
+                case Map.lookup pid r.parents of
+                  Just (Right vpc') ->
+                    let newChildren = Array.delete key vpc'.children in
+                    (newChildren == [])
+                    /\ pid
+                    /\ Right (vpc' { children = newChildren })
+                  _ -> unsafeThrow "removeLeaf"
+                -- Map.update
+                --   (case _ of
+                --      Right vpc' ->
+                --        Just $ Right $ vpc' { children = Array.delete key vpc'.children }
+
+                --      Left children -> Just $ Left $ Array.delete key children
+                --   )
+                --   pid
+                --   r.parents
+
+      in
+      TreeMap
+        case newParentData of
+          Just (true /\ pid /\ (Right vpc')) ->
+            { leaves: Map.insert pid vpc' potentialNewLeaves
+            , parents: Map.delete pid r.parents
+            }
+
+          Just (false /\ pid /\ parent) ->
+            { leaves: potentialNewLeaves
+            , parents: Map.insert pid parent r.parents
+            }
+
+          Nothing ->
+            { leaves: potentialNewLeaves
+            , parents: r.parents
+            }
+          _ -> unsafeThrow "removeLeaf 2"
+
+
+    Nothing -> tm
+
+removeLeafRecursive :: ∀ a b.
+  Ord a
+  => (VPC a b -> Boolean)
+  -> a
+  -> TreeMap a b
+  -> TreeMap a b
+removeLeafRecursive shouldRemove key tm =
+  case lookup key tm of
+    Just vpc ->
+      if vpc.children == [] then
+        if shouldRemove vpc then
+          let newTm = removeLeaf key tm in
+          case vpc.parent of
+            Just pid -> removeLeafRecursive shouldRemove pid newTm
+            Nothing -> newTm
+        else
+          tm
+      else
+        tm
+
+    Nothing -> tm
+
+member :: ∀ a b. Ord a => a -> TreeMap a b -> Boolean
+member key tm = lookup key tm # maybe false \_ -> true
+
+-- | For when a leaf has been recursively deleted
+findNewLeaf :: ∀ a b. Ord a => a -> TreeMap a b -> TreeMap a b -> Maybe a
+findNewLeaf key oldTM newTM =
+  if member key newTM then
+    Just key
+  else
+    lookup key oldTM
+    >>= _.parent
+    >>= findNewLeaf ~$ oldTM ~$ newTM
