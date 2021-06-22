@@ -128,6 +128,7 @@ data Msg
   | UpdateNameInput String
   | UpdateName
   | SelectSibling (Id "Message")
+  | Undo
   | Focused
 
 instance Eq Msg where
@@ -143,6 +144,7 @@ instance Eq Msg where
       UpdateName, UpdateName -> true
       SelectSibling m1, SelectSibling m2 -> m1 == m2
       Focused, Focused -> true
+      Undo, Undo -> true
       _, _ -> false
 
 update :: Model -> Msg -> Update Msg Model
@@ -158,6 +160,7 @@ update model@{ userId, convoId } =
         >>= maybe (pure unit) (HTML.focus {})
   in
   case _ of
+    Undo -> pure $ model { inputBox = InputBox.undo model.inputBox }
     Focused -> pure $ model { unread = false }
 
     SelectSibling mid -> do
@@ -265,7 +268,7 @@ update model@{ userId, convoId } =
                          }
                   )
 
-                pure (model { inputBox = InputBox.default })
+                pure (model { inputBox = InputBox.reset model.inputBox })
               else
                 pure errorMsg
              )
@@ -295,7 +298,7 @@ update model@{ userId, convoId } =
 
         pure
           (model
-             { inputBox = InputBox.default
+             { inputBox = InputBox.reset model.inputBox
              , messageParent = Nothing
              , thread =
                  case model.thread of
@@ -715,7 +718,7 @@ threadView model =
               [ A.id inputId
               , A.value $ InputBox.content model.inputBox
               , inputWithHeight
-              , detectSendMessage
+              , detectInputEvents
               ]
               []
           , H.button [ A.onClick SendMessage ] [ H.text "Send" ]
@@ -867,8 +870,8 @@ inputWithHeight =
 
        Nothing -> pure Nothing
 
-detectSendMessage :: Attribute Msg
-detectSendMessage =
+detectInputEvents :: Attribute Msg
+detectInputEvents =
   A.on "keydown"
   $ HTML.toMaybeKeyboardEvent
   .> case _ of
@@ -876,6 +879,9 @@ detectSendMessage =
          if HTML.key kbe == "Enter" && (HTML.ctrlKey kbe || HTML.metaKey kbe) then do
            HTML.preventDefault kbe
            pure $ Just SendMessage
+         else if HTML.key kbe == "z" && HTML.ctrlKey kbe then do
+           HTML.preventDefault kbe
+           pure $ Just Undo
          else
            pure Nothing
 
