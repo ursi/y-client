@@ -193,6 +193,7 @@ findLeaf id tm =
         case Array.uncons children of
           Just { head } -> findLeaf head tm
           Nothing -> Just id
+
 empty :: ∀ a b. TreeMap a b
 empty = TreeMap { leaves: Map.empty, parents: Map.empty }
 

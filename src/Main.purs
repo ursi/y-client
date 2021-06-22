@@ -319,7 +319,7 @@ update model@{ userId, convoId } =
             firstMessage :: Maybe Message
             firstMessage =
               splitEvents events
-              # _.messageEvents
+              # _.messageSend
               # List.head
               <#> _.message
 
@@ -422,12 +422,12 @@ processEvents =
                 Map.insert userId name acc
              )
              Map.empty
-             events.nameEvents
+             events.setName
        , messages:
            let
              initialTM :: MessageTree
              initialTM =
-               events.messageEvents
+               events.messageSend
                <#> _.message .> toIVP
                # toTreeMap
            in
@@ -446,13 +446,13 @@ processEvents =
 
 splitEvents ::
   Array Event
-  -> { nameEvents ::
+  -> { setName ::
          List
            { convoId :: Id "Convo"
            , userId :: Id "User"
            , name :: String
            }
-     , messageEvents ::
+     , messageSend ::
          List
            { convoId :: Id "Convo"
            , message :: Message
@@ -469,18 +469,18 @@ splitEvents =
     (\(Event event) acc ->
        case event.payload of
          EventPayload_SetName data' ->
-           acc { nameEvents = data' : acc.nameEvents }
+           acc { setName = data' : acc.setName }
 
          EventPayload_MessageSend data' ->
-           acc { messageEvents = data' : acc.messageEvents }
+           acc { messageSend = data' : acc.messageSend }
 
          EventPayload_MessageDelete data' ->
            acc { messageDelete = data' : acc.messageDelete }
 
          _ -> acc
     )
-    { nameEvents: Nil
-    , messageEvents: Nil
+    { setName: Nil
+    , messageSend: Nil
     , messageDelete: Nil
     }
 
