@@ -479,10 +479,7 @@ splitEvents =
 
          _ -> acc
     )
-    { setName: Nil
-    , messageSend: Nil
-    , messageDelete: Nil
-    }
+    mempty
 
 toIVP :: Message -> IVP (Id "Message") Message
 toIVP value@{ id, depIds } =
