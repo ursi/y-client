@@ -670,9 +670,8 @@ threadView model =
                   createMessage isSibling styles mes =
                     H.divS
                       [ Ds.following [ C.borderBottom "1px solid" ]
-                      , C.padding ".25em"
                       , C.position "relative"
-                      , C.paddingBottom "6px"
+                      , C.padding "3px .25em 6px .25em"
                       , styles
                       ]
                       [ onNotSelectingClick
@@ -704,7 +703,6 @@ threadView model =
                             [ C.font "0.72em sans-serif"
                             , C.opacity "0.6"
                             , C.marginBottom "0.7em"
-                            , C.paddingTop "1px"
                             ]
                             []
                             [ H.text $ getName mes.authorId model.state.names
@@ -720,6 +718,7 @@ threadView model =
                           [ C.whiteSpace "pre-wrap"
                           , C.position "relative"
                           , C.overflowX "auto"
+                          , C.marginTop "3px"
                           ]
                           []
                           [ H.text
