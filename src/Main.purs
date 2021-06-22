@@ -19,6 +19,8 @@ import Debug as Debug
 import Design as Ds
 import Html (Html)
 import Html as H
+import InputBox (InputBox)
+import InputBox as InputBox
 import Platform (Cmd(..), Program, Update, afterRender, batch, tell)
 import Platform as Platform
 import Producer as P
@@ -106,7 +108,7 @@ init _ = do
         , messages: TreeMap.empty
         , names: Map.empty
         }
-    , inputBox: defaultInputBox
+    , inputBox: InputBox.default
     , thread: Nothing
     , messageParent: Nothing
     , nameInput: ""
@@ -116,7 +118,7 @@ init _ = do
 data Msg
   = WebSocketOpened
   | TransmissionReceived (Maybe ToClient)
-  | UpdateInputBox InputBox
+  | UpdateInputBox String Number
   | SendMessage
   | SelectThreadRoot (Id "Message")
   | NewThread
@@ -124,12 +126,13 @@ data Msg
   | UpdateNameInput String
   | UpdateName
   | SelectSibling (Id "Message")
+  | Undo
   | Focused
 
 instance Eq Msg where
   eq =
     case _, _ of
-      UpdateInputBox i1, UpdateInputBox i2 -> i1 == i2
+      UpdateInputBox s1 h1, UpdateInputBox s2 h2 -> s1 == s2 && h1 == h2
       SendMessage, SendMessage -> true
       WebSocketOpened, WebSocketOpened -> true
       SelectThreadRoot m1, SelectThreadRoot m2 -> m1 == m2
@@ -139,15 +142,8 @@ instance Eq Msg where
       UpdateName, UpdateName -> true
       SelectSibling m1, SelectSibling m2 -> m1 == m2
       Focused, Focused -> true
+      Undo, Undo -> true
       _, _ -> false
-
-type InputBox =
-  { content :: String
-  , height :: Number
-  }
-
-defaultInputBox :: InputBox
-defaultInputBox = { content: "", height: 30.0 }
 
 update :: Model -> Msg -> Update Msg Model
 update model@{ userId, convoId } =
@@ -162,6 +158,7 @@ update model@{ userId, convoId } =
         >>= maybe (pure unit) (HTML.focus {})
   in
   case _ of
+    Undo -> pure $ model { inputBox = InputBox.undo model.inputBox }
     Focused -> pure $ model { unread = false }
 
     SelectSibling mid -> do
@@ -215,9 +212,20 @@ update model@{ userId, convoId } =
     SendMessage -> do
       focusInput
 
-      if model.inputBox.content == "" then
+      let
+        content = InputBox.content model.inputBox
+
+        errorMsg =
+          model
+            { inputBox =
+                InputBox.setContent
+                  "You didn't send that message!"
+                  model.inputBox
+            }
+
+      if content == "" then
         pure model
-      else if model.inputBox.content == "/delete" then
+      else if content == "/delete" then
         (do
            mid <- model.messageParent
            { value: mes } <- TreeMap.lookup mid model.state.messages
@@ -234,17 +242,13 @@ update model@{ userId, convoId } =
                          }
                   )
 
-                pure (model { inputBox = defaultInputBox })
+                pure (model { inputBox = InputBox.default })
               else
-                pure
-                $ model
-                    { inputBox =
-                        model.inputBox { content = "You didn't send that message!" }
-                    }
+                pure errorMsg
              )
         )
         # fromMaybe (pure model)
-      else if startsWith "/edit " model.inputBox.content then
+      else if startsWith "/edit " content then
         (do
            mid <- model.messageParent
            { value: mes } <- TreeMap.lookup mid model.state.messages
@@ -258,17 +262,13 @@ update model@{ userId, convoId } =
                          { convoId
                          , messageId: mes.id
                          , authorId: userId
-                         , content: String.drop 6 model.inputBox.content
+                         , content: String.drop 6 content
                          }
                   )
 
-                pure (model { inputBox = defaultInputBox })
+                pure (model { inputBox = InputBox.reset model.inputBox })
               else
-                pure
-                $ model
-                    { inputBox =
-                        model.inputBox { content = "You didn't send that message!" }
-                    }
+                pure errorMsg
              )
         )
         # fromMaybe (pure model)
@@ -290,13 +290,13 @@ update model@{ userId, convoId } =
                         model.messageParent
                         <#> Set.singleton
                         # fromMaybe mempty
-                    , content: model.inputBox.content
+                    , content: InputBox.content model.inputBox
                     }
                 }
 
         pure
           (model
-             { inputBox = defaultInputBox
+             { inputBox = InputBox.reset model.inputBox
              , messageParent = Nothing
              , thread =
                  case model.thread of
@@ -305,21 +305,30 @@ update model@{ userId, convoId } =
              }
           )
 
-    UpdateInputBox ib@{ content } ->
-      if content == "/edit " then
+    UpdateInputBox content height ->
+      let
+        model2 = model { inputBox = InputBox.update content height model.inputBox }
+      in
+      if content == "/edit " && InputBox.prevContent model2.inputBox == "/edit" then
         pure
         $ (do
-             mid <- model.messageParent
-             { value: mes } <- TreeMap.lookup mid model.state.messages
+             mid <- model2.messageParent
+             { value: mes } <- TreeMap.lookup mid model2.state.messages
              Just
                if mes.deleted then
-                 model { inputBox = ib }
+                 model2
                else
-                 model { inputBox = ib { content = "/edit " <> mes.content } }
+                 model2
+                   { inputBox =
+                       InputBox.update
+                         ("/edit " <> mes.content)
+                         height
+                         model.inputBox
+                   }
           )
-          # fromMaybe (model { inputBox = ib })
+          # fromMaybe model2
       else
-        pure $ model { inputBox = ib }
+        pure model2
 
     TransmissionReceived mtc ->
       case mtc of
@@ -361,16 +370,16 @@ update model@{ userId, convoId } =
               <#> _.message
 
           liftEffect
-            (maybe (pure unit)
-               (\mes ->
-                  if mes.authorId == userId then
-                    pure unit
-                  else
+            (case firstMessage of
+               Just mes ->
+                 if mes.authorId == userId then
+                   pure unit
+                 else
                    sendNotification
                      (getName mes.authorId model2.state.names)
                      mes.content
-               )
-               firstMessage
+
+               Nothing -> pure unit
             )
 
           case model2.thread of
@@ -380,7 +389,7 @@ update model@{ userId, convoId } =
               $ model2
                   { thread = mleaf
                   , messageParent =
-                      if model.inputBox.content == "" then
+                      if InputBox.content model.inputBox == "" then
                         mleaf
                       else
                         model2.messageParent
@@ -556,14 +565,14 @@ focusHandler _ = pure $ Just Focused
 hitEnter :: HTML.Event -> Effect (Maybe Msg)
 hitEnter =
   HTML.toMaybeKeyboardEvent
-  .> maybe (pure Nothing)
-       \kbe ->
-         if HTML.key kbe == "Enter" then do
-           document <- HTML.window >>= HTML.document
-           body <- HTML.unsafeBody document
-           mactiveElement <- HTML.activeElement document
-           maybe (pure Nothing)
-             (\activeElement ->
+  .> case _ of
+      Just kbe ->
+        if HTML.key kbe == "Enter" then do
+          document <- HTML.window >>= HTML.document
+          body <- HTML.unsafeBody document
+          bind (HTML.activeElement document)
+            case _ of
+              Just activeElement ->
                 if (RefEq body == RefEq activeElement) then do
                   bind
                     (HTML.getElementById inputId document # map HTML.toMaybeHTMLElement)
@@ -573,10 +582,12 @@ hitEnter =
                   pure Nothing
                 else
                   pure Nothing
-             )
-             mactiveElement
-         else
-           pure Nothing
+
+              Nothing -> pure Nothing
+        else
+          pure Nothing
+
+      Nothing -> pure Nothing
 
 view ::
   Model
@@ -641,8 +652,8 @@ threadBar model =
       $ leaves
       <#> \mid ->
             TreeMap.lookup mid model.state.messages
-            # maybe mempty
-                \{ value: { content, deleted } } ->
+            # case _ of
+                Just { value: { content, deleted } } ->
                   if deleted then
                     mempty
                   else
@@ -658,6 +669,8 @@ threadBar model =
                       ]
                       [ onNotSelectingClick $ SelectThreadRoot mid ]
                       [ H.text content ]
+
+                Nothing -> mempty
     ]
 
 inputId :: String
@@ -675,9 +688,7 @@ threadView model =
       $ CF.sub "0px" Ds.vars.borderWidth1
     ]
     []
-    [ case mthread of
-        Just thread -> messageList thread
-        Nothing -> mempty
+    [ maybe mempty messageList mthread
     , messageInput
     ]
 
@@ -695,7 +706,7 @@ threadView model =
           ]
           []
           [ H.textareaS
-              [ C.height $ C.px  model.inputBox.height
+              [ C.height $ C.px $ InputBox.height model.inputBox
               , C.flex "1"
               , C.borderJ [ C.px Ds.inputBoxBorderWidth, "solid", Ds.vars.color ]
               , C.padding ".45em"
@@ -703,9 +714,9 @@ threadView model =
               , C.borderTop "none"
               ]
               [ A.id inputId
-              , A.value model.inputBox.content
+              , A.value $ InputBox.content model.inputBox
               , inputWithHeight
-              , detectSendMessage
+              , detectInputEvents
               ]
               []
           , H.button [ A.onClick SendMessage ] [ H.text "Send" ]
@@ -759,11 +770,13 @@ threadView model =
                             [ H.text $ getName mes.authorId model.state.names
                             , getParent mes model.state.messages
                               <#> formatTimeDiff <. _.timeSent ~$ mes.timeSent
-                              # maybe mempty
-                                  \diff ->
+                              # case _ of
+                                  Just diff ->
                                     H.spanS [ C.marginLeft "12px" ]
                                     [ A.title $ dateString $ asMilliseconds mes.timeSent ]
                                     [ H.text diff ]
+
+                                  Nothing -> mempty
                             ]
                       , H.divS
                           [ C.whiteSpace "pre-wrap"
@@ -841,30 +854,36 @@ inputWithHeight =
   A.on "input"
   $ HTML.unsafeTarget
   .> HTML.toMaybeHTMLTextAreaElement
-  .> maybe (pure Nothing)
-       \elem ->
+  .> case _ of
+       Just elem ->
          lift2
            (\content height ->
               Just
               $ UpdateInputBox
-                  { content
-                  , height: height + Ds.inputBoxBorderWidth
-                  }
+                  content
+                  (height + Ds.inputBoxBorderWidth)
            )
            (TextArea.value elem)
            (toNumber <$> HTML.scrollHeight elem)
 
-detectSendMessage :: Attribute Msg
-detectSendMessage =
+       Nothing -> pure Nothing
+
+detectInputEvents :: Attribute Msg
+detectInputEvents =
   A.on "keydown"
   $ HTML.toMaybeKeyboardEvent
-  .> maybe (pure Nothing)
-       \kbe ->
+  .> case _ of
+       Just kbe ->
          if HTML.key kbe == "Enter" && (HTML.ctrlKey kbe || HTML.metaKey kbe) then do
            HTML.preventDefault kbe
            pure $ Just SendMessage
+         else if HTML.key kbe == "z" && HTML.ctrlKey kbe then do
+           HTML.preventDefault kbe
+           pure $ Just Undo
          else
            pure Nothing
+
+       Nothing -> pure Nothing
 
 foreign import isSelecting :: Effect Boolean
 

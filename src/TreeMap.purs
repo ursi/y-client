@@ -276,14 +276,11 @@ removeLeafRecursive :: ∀ a b.
 removeLeafRecursive shouldRemove key tm =
   case lookup key tm of
     Just vpc ->
-      if vpc.children == [] then
-        if shouldRemove vpc then
-          let newTm = removeLeaf key tm in
-          case vpc.parent of
-            Just pid -> removeLeafRecursive shouldRemove pid newTm
-            Nothing -> newTm
-        else
-          tm
+      if vpc.children == [] && shouldRemove vpc then
+        let newTm = removeLeaf key tm in
+        case vpc.parent of
+          Just pid -> removeLeafRecursive shouldRemove pid newTm
+          Nothing -> newTm
       else
         tm
 
