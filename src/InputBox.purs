@@ -3,6 +3,7 @@ module InputBox
   , content
   , default
   , height
+  , prevContent
   , reset
   , setContent
   , undo
@@ -66,3 +67,6 @@ undo (InputBox r) =
   $ r { content = r.prevContent
       , prevContent = r.content
       }
+
+prevContent :: InputBox -> String
+prevContent (InputBox r) = r.prevContent

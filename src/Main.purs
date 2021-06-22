@@ -311,7 +311,7 @@ update model@{ userId, convoId } =
       let
         model2 = model { inputBox = InputBox.update content height model.inputBox }
       in
-      if content == "/edit " then
+      if content == "/edit " && InputBox.prevContent model2.inputBox == "/edit" then
         pure
         $ (do
              mid <- model2.messageParent
