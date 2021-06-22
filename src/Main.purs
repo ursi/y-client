@@ -457,6 +457,13 @@ splitEvents ::
            { convoId :: Id "Convo"
            , message :: Message
            }
+     , messageEdit ::
+         List
+           { convoId :: Id "Convo"
+           , messageId :: Id "Message"
+           , authorId :: Id "User"
+           , content :: String
+           }
      , messageDelete ::
          List
            { convoId :: Id "Convo"
@@ -473,6 +480,9 @@ splitEvents =
 
          EventPayload_MessageSend data' ->
            acc { messageSend = data' : acc.messageSend }
+
+         EventPayload_MessageEdit data' ->
+           acc { messageEdit = data' : acc.messageEdit }
 
          EventPayload_MessageDelete data' ->
            acc { messageDelete = data' : acc.messageDelete }
