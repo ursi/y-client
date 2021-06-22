@@ -363,16 +363,16 @@ update model@{ userId, convoId } =
               <#> _.message
 
           liftEffect
-            (maybe (pure unit)
-               (\mes ->
-                  if mes.authorId == userId then
-                    pure unit
-                  else
+            (case firstMessage of
+               Just mes ->
+                 if mes.authorId == userId then
+                   pure unit
+                 else
                    sendNotification
                      (getName mes.authorId model2.state.names)
                      mes.content
-               )
-               firstMessage
+
+               Nothing -> pure unit
             )
 
           case model2.thread of
@@ -558,14 +558,14 @@ focusHandler _ = pure $ Just Focused
 hitEnter :: HTML.Event -> Effect (Maybe Msg)
 hitEnter =
   HTML.toMaybeKeyboardEvent
-  .> maybe (pure Nothing)
-       \kbe ->
-         if HTML.key kbe == "Enter" then do
-           document <- HTML.window >>= HTML.document
-           body <- HTML.unsafeBody document
-           mactiveElement <- HTML.activeElement document
-           maybe (pure Nothing)
-             (\activeElement ->
+  .> case _ of
+      Just kbe ->
+        if HTML.key kbe == "Enter" then do
+          document <- HTML.window >>= HTML.document
+          body <- HTML.unsafeBody document
+          bind (HTML.activeElement document)
+            case _ of
+              Just activeElement ->
                 if (RefEq body == RefEq activeElement) then do
                   bind
                     (HTML.getElementById inputId document # map HTML.toMaybeHTMLElement)
@@ -575,10 +575,12 @@ hitEnter =
                   pure Nothing
                 else
                   pure Nothing
-             )
-             mactiveElement
-         else
-           pure Nothing
+
+              Nothing -> pure Nothing
+        else
+          pure Nothing
+
+      Nothing -> pure Nothing
 
 view ::
   Model
@@ -643,8 +645,8 @@ threadBar model =
       $ leaves
       <#> \mid ->
             TreeMap.lookup mid model.state.messages
-            # maybe mempty
-                \{ value: { content, deleted } } ->
+            # case _ of
+                Just { value: { content, deleted } } ->
                   if deleted then
                     mempty
                   else
@@ -660,6 +662,8 @@ threadBar model =
                       ]
                       [ onNotSelectingClick $ SelectThreadRoot mid ]
                       [ H.text content ]
+
+                Nothing -> mempty
     ]
 
 inputId :: String
@@ -677,9 +681,7 @@ threadView model =
       $ CF.sub "0px" Ds.vars.borderWidth1
     ]
     []
-    [ case mthread of
-        Just thread -> messageList thread
-        Nothing -> mempty
+    [ maybe mempty messageList mthread
     , messageInput
     ]
 
@@ -761,11 +763,13 @@ threadView model =
                             [ H.text $ getName mes.authorId model.state.names
                             , getParent mes model.state.messages
                               <#> formatTimeDiff <. _.timeSent ~$ mes.timeSent
-                              # maybe mempty
-                                  \diff ->
+                              # case _ of
+                                  Just diff ->
                                     H.spanS [ C.marginLeft "12px" ]
                                     [ A.title $ dateString $ asMilliseconds mes.timeSent ]
                                     [ H.text diff ]
+
+                                  Nothing -> mempty
                             ]
                       , H.divS
                           [ C.whiteSpace "pre-wrap"
@@ -843,8 +847,8 @@ inputWithHeight =
   A.on "input"
   $ HTML.unsafeTarget
   .> HTML.toMaybeHTMLTextAreaElement
-  .> maybe (pure Nothing)
-       \elem ->
+  .> case _ of
+       Just elem ->
          lift2
            (\content height ->
               Just
@@ -856,17 +860,21 @@ inputWithHeight =
            (TextArea.value elem)
            (toNumber <$> HTML.scrollHeight elem)
 
+       Nothing -> pure Nothing
+
 detectSendMessage :: Attribute Msg
 detectSendMessage =
   A.on "keydown"
   $ HTML.toMaybeKeyboardEvent
-  .> maybe (pure Nothing)
-       \kbe ->
+  .> case _ of
+       Just kbe ->
          if HTML.key kbe == "Enter" && (HTML.ctrlKey kbe || HTML.metaKey kbe) then do
            HTML.preventDefault kbe
            pure $ Just SendMessage
          else
            pure Nothing
+
+       Nothing -> pure Nothing
 
 foreign import isSelecting :: Effect Boolean
 
