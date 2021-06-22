@@ -215,41 +215,67 @@ update model@{ userId, convoId } =
     SendMessage -> do
       focusInput
 
-      if model.inputBox.content /= "" then
-        do
-          id :: Id "Message" <- liftEffect Id.new
-
-          liftEffect do
-            pushEvent model
-              \instant ->
-                EventPayload_MessageSend
-                  { convoId
-                  , message:
-                      { id
-                      , timeSent: instant
-                      , authorId: model.userId
-                      , convoId
-                      , deleted: false
-                      , depIds:
-                          model.messageParent
-                          <#> Set.singleton
-                          # fromMaybe mempty
-                      , content: model.inputBox.content
-                      }
-                  }
-
-          pure
-            (model
-               { inputBox = defaultInputBox
-               , messageParent = Nothing
-               , thread =
-                   case model.thread of
-                     Nothing -> Just id
-                     _ -> model.thread
-               }
-            )
-      else
+      if model.inputBox.content == "" then
         pure model
+      else if model.inputBox.content == "/delete" then
+        (do
+           mid <- model.messageParent
+           { value: mes } <- TreeMap.lookup mid model.state.messages
+
+           Just
+             (if mes.authorId == userId then do
+                liftEffect
+                  (pushEvent model
+                     \_ ->
+                       EventPayload_MessageDelete
+                         { convoId
+                         , userId
+                         , messageId: mes.id
+                         }
+                  )
+
+                pure (model { inputBox = defaultInputBox })
+              else
+                pure
+                $ model
+                    { inputBox =
+                        model.inputBox { content = "You didn't send that message!" }
+                    }
+             )
+        )
+        # fromMaybe (pure model)
+      else do
+        id :: Id "Message" <- liftEffect Id.new
+
+        liftEffect do
+          pushEvent model
+            \instant ->
+              EventPayload_MessageSend
+                { convoId
+                , message:
+                    { id
+                    , timeSent: instant
+                    , authorId: model.userId
+                    , convoId
+                    , deleted: false
+                    , depIds:
+                        model.messageParent
+                        <#> Set.singleton
+                        # fromMaybe mempty
+                    , content: model.inputBox.content
+                    }
+                }
+
+        pure
+          (model
+             { inputBox = defaultInputBox
+             , messageParent = Nothing
+             , thread =
+                 case model.thread of
+                   Nothing -> Just id
+                   _ -> model.thread
+             }
+          )
 
     UpdateInputBox ib ->
       let model2 = model { inputBox = ib } in
@@ -273,6 +299,9 @@ update model@{ userId, convoId } =
             messages :: MessageTree
             messages = processedEvents.messages
 
+            newLeaf :: Id "Message" -> Maybe (Id "Message")
+            newLeaf = TreeMap.findNewLeaf ~$ model.state.messages ~$ messages
+
             model2 =
               model
                 { state = { events: newEvents, names, messages }
@@ -282,6 +311,8 @@ update model@{ userId, convoId } =
                       # fromMaybe ""
                     else
                       model.nameInput
+                , messageParent = model.messageParent >>= newLeaf
+                , thread = model.thread >>= newLeaf
                 , unread = if focused then false else true
                 }
 
@@ -305,7 +336,7 @@ update model@{ userId, convoId } =
                firstMessage
             )
 
-          case model.thread of
+          case model2.thread of
             Just mid ->
               let mleaf = TreeMap.findLeaf mid messages in
               pure
@@ -315,7 +346,7 @@ update model@{ userId, convoId } =
                       if model.inputBox.content == "" then
                         mleaf
                       else
-                        model.messageParent
+                        model2.messageParent
                   }
 
             Nothing -> pure model2
@@ -384,19 +415,34 @@ processEvents ::
      }
 processEvents =
   splitEvents
-  >>> \{ nameEvents, messageEvents } ->
-        { names:
-            foldl
-              (\acc { userId, name } ->
-                 Map.insert userId name acc
-              )
-              Map.empty
-              nameEvents
-        , messages:
-            messageEvents
-            <#> _.message .> toIVP
-            # toTreeMap
-        }
+  .> \events ->
+       { names:
+           foldl
+             (\acc { userId, name } ->
+                Map.insert userId name acc
+             )
+             Map.empty
+             events.nameEvents
+       , messages:
+           let
+             initialTM :: MessageTree
+             initialTM =
+               events.messageEvents
+               <#> _.message .> toIVP
+               # toTreeMap
+           in
+           foldl
+             (\acc { messageId } ->
+                acc
+                # TreeMap.edit messageId
+                    (\vpc -> vpc { value = vpc.value { deleted = true } })
+                # TreeMap.removeLeafRecursive
+                    (_.value .> _.deleted)
+                    messageId
+             )
+             initialTM
+             events.messageDelete
+       }
 
 splitEvents ::
   Array Event
@@ -411,21 +457,31 @@ splitEvents ::
            { convoId :: Id "Convo"
            , message :: Message
            }
+     , messageDelete ::
+         List
+           { convoId :: Id "Convo"
+           , userId :: Id "User"
+           , messageId :: Id "Message"
+           }
      }
 splitEvents =
   foldr
-    (\(Event event) acc@{ nameEvents, messageEvents } ->
+    (\(Event event) acc ->
        case event.payload of
          EventPayload_SetName data' ->
-           acc { nameEvents = data' : nameEvents }
+           acc { nameEvents = data' : acc.nameEvents }
 
          EventPayload_MessageSend data' ->
-           acc { messageEvents = data' : messageEvents }
+           acc { messageEvents = data' : acc.messageEvents }
+
+         EventPayload_MessageDelete data' ->
+           acc { messageDelete = data' : acc.messageDelete }
 
          _ -> acc
     )
     { nameEvents: Nil
     , messageEvents: Nil
+    , messageDelete: Nil
     }
 
 toIVP :: Message -> IVP (Id "Message") Message
@@ -534,20 +590,23 @@ threadBar model =
       $ leaves
       <#> \mid ->
             TreeMap.lookup mid model.state.messages
-            # maybe "oops" (_.value .> _.content)
-            # \mes ->
-                H.divS
-                  [ if model.thread == Just mid then
-                      C.background Ds.vars.accent1
-                    else
-                      mempty
-                  , Ds.following [ C.borderTop "1px solid" ]
-                  , C.padding ".3em"
-                  , C.whiteSpace "pre-wrap"
-                  , C.overflow "auto"
-                  ]
-                  [ onNotSelectingClick $ SelectThreadRoot mid ]
-                  [ H.text mes ]
+            # maybe mempty
+                \{ value: { content, deleted } } ->
+                  if deleted then
+                    mempty
+                  else
+                    H.divS
+                      [ if model.thread == Just mid then
+                          C.background Ds.vars.accent1
+                        else
+                          mempty
+                      , Ds.following [ C.borderTop "1px solid" ]
+                      , C.padding ".3em"
+                      , C.whiteSpace "pre-wrap"
+                      , C.overflow "auto"
+                      ]
+                      [ onNotSelectingClick $ SelectThreadRoot mid ]
+                      [ H.text content ]
     ]
 
 inputId :: String
@@ -638,29 +697,37 @@ threadView model =
                             []
                         else
                           mempty
-                      , H.divS
-                          [ C.font "0.72em sans-serif"
-                          , C.opacity "0.6"
-                          , C.marginBottom "0.7em"
-                          , C.paddingTop "1px"
-                          ]
-                          []
-                          [ H.text $ getName mes.authorId model.state.names
-                          , getParent mes model.state.messages
-                            <#> formatTimeDiff <. _.timeSent ~$ mes.timeSent
-                            # maybe mempty
-                                \diff ->
-                                  H.spanS [ C.marginLeft "12px" ]
-                                  [ A.title $ dateString $ asMilliseconds mes.timeSent ]
-                                  [ H.text diff ]
-                          ]
+                      , if mes.deleted then
+                          mempty
+                        else
+                          H.divS
+                            [ C.font "0.72em sans-serif"
+                            , C.opacity "0.6"
+                            , C.marginBottom "0.7em"
+                            , C.paddingTop "1px"
+                            ]
+                            []
+                            [ H.text $ getName mes.authorId model.state.names
+                            , getParent mes model.state.messages
+                              <#> formatTimeDiff <. _.timeSent ~$ mes.timeSent
+                              # maybe mempty
+                                  \diff ->
+                                    H.spanS [ C.marginLeft "12px" ]
+                                    [ A.title $ dateString $ asMilliseconds mes.timeSent ]
+                                    [ H.text diff ]
+                            ]
                       , H.divS
                           [ C.whiteSpace "pre-wrap"
                           , C.position "relative"
                           , C.overflowX "auto"
                           ]
                           []
-                          [ H.text mes.content ]
+                          [ H.text
+                              if mes.deleted then
+                                "(deleted)"
+                              else
+                                mes.content
+                          ]
                       ]
                 in
                 batch
