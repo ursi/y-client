@@ -13,6 +13,7 @@ import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Set as Set
+import Data.String.Utils (startsWith)
 import Debug as Debug
 import Design as Ds
 import Html (Html)
@@ -277,12 +278,21 @@ update model@{ userId, convoId } =
              }
           )
 
-    UpdateInputBox ib ->
-      let model2 = model { inputBox = ib } in
-
-      case model.thread, model.messageParent of
-        Just _, Nothing -> pure $ model2 { messageParent = model.thread }
-        _, _ -> pure model2
+    UpdateInputBox ib@{ content } ->
+      if startsWith "/edit " content then
+        pure
+        $ (do
+             mid <- model.messageParent
+             { value: mes } <- TreeMap.lookup mid model.state.messages
+             Just
+               if mes.deleted then
+                 model { inputBox = ib }
+               else
+                 model { inputBox = ib { content = "/edit " <> mes.content } }
+          )
+          # fromMaybe (model { inputBox = ib })
+      else
+        pure $ model { inputBox = ib }
 
     TransmissionReceived mtc ->
       case mtc of

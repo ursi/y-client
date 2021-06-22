@@ -20,7 +20,8 @@
                 { dependencies =
                     with ps-pkgs;
                     let inherit (ps-pkgs-ns) ursi; in
-                    [ ursi.elmish
+                    [ stringutils
+                      ursi.elmish
                       ursi.prelude
                       (build
                          { name = "y-shared";
