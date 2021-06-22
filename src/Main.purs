@@ -217,6 +217,13 @@ update model@{ userId, convoId } =
     SendMessage -> do
       focusInput
 
+      let
+        errorMsg =
+          model
+            { inputBox =
+                model.inputBox { content = "You didn't send that message!" }
+            }
+
       if model.inputBox.content == "" then
         pure model
       else if model.inputBox.content == "/delete" then
@@ -238,11 +245,7 @@ update model@{ userId, convoId } =
 
                 pure (model { inputBox = defaultInputBox })
               else
-                pure
-                $ model
-                    { inputBox =
-                        model.inputBox { content = "You didn't send that message!" }
-                    }
+                pure errorMsg
              )
         )
         # fromMaybe (pure model)
@@ -266,11 +269,7 @@ update model@{ userId, convoId } =
 
                 pure (model { inputBox = defaultInputBox })
               else
-                pure
-                $ model
-                    { inputBox =
-                        model.inputBox { content = "You didn't send that message!" }
-                    }
+                pure errorMsg
              )
         )
         # fromMaybe (pure model)
