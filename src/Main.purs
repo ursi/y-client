@@ -14,6 +14,7 @@ import Data.Map (Map)
 import Data.Map as Map
 import Data.Set as Set
 import Data.String.Utils (startsWith)
+import Data.String.CodePoints as String
 import Debug as Debug
 import Design as Ds
 import Html (Html)
@@ -245,6 +246,34 @@ update model@{ userId, convoId } =
              )
         )
         # fromMaybe (pure model)
+      else if startsWith "/edit " model.inputBox.content then
+        (do
+           mid <- model.messageParent
+           { value: mes } <- TreeMap.lookup mid model.state.messages
+
+           Just
+             (if mes.authorId == userId then do
+                liftEffect
+                  (pushEvent model
+                     \_ ->
+                       EventPayload_MessageEdit
+                         { convoId
+                         , messageId: mes.id
+                         , authorId: userId
+                         , content: String.drop 6 model.inputBox.content
+                         }
+                  )
+
+                pure (model { inputBox = defaultInputBox })
+              else
+                pure
+                $ model
+                    { inputBox =
+                        model.inputBox { content = "You didn't send that message!" }
+                    }
+             )
+        )
+        # fromMaybe (pure model)
       else do
         id :: Id "Message" <- liftEffect Id.new
 
@@ -452,6 +481,13 @@ processEvents =
              )
              initialTM
              events.messageDelete
+           # foldl
+               (\acc { messageId, content } ->
+                  acc
+                  # TreeMap.edit messageId
+                      \vpc -> vpc { value = vpc.value { content = content } }
+               )
+           ~$ events.messageEdit
        }
 
 splitEvents ::
