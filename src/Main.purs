@@ -211,20 +211,7 @@ update model@{ userId, convoId } =
 
     SelectThreadRoot mid -> do
       focusInput
-
-      if Set.member (userId /\ mid) model.events.folded.read then
-        pure unit
-      else
-        liftEffect
-          (pushEvent model
-             \_ ->
-               EventPayload_SetReadState
-                 { convoId
-                 , userId
-                 , messageId: mid
-                 , readState: true
-                 }
-          )
+      pushReadEvent model mid
 
       pure
         (model
@@ -410,20 +397,7 @@ update model@{ userId, convoId } =
               <#> _.message
 
           case newThread of
-            Just messageId ->
-              if Set.member (userId /\ messageId) model2.events.folded.read then
-                pure unit
-              else
-                liftEffect
-                $ pushEvent model2
-                    \_ ->
-                      EventPayload_SetReadState
-                        { convoId
-                        , userId
-                        , messageId
-                        , readState: true
-                        }
-
+            Just messageId -> pushReadEvent model2 messageId
             Nothing -> pure unit
 
           case firstMessage of
@@ -449,6 +423,22 @@ update model@{ userId, convoId } =
         Ws.transmit (ToServer_Subscribe { userId, convoId }) model.wsClient
         Ws.transmit (ToServer_Pull { convoId }) model.wsClient
       pure model
+
+pushReadEvent :: Model -> Id "Message" -> Update Msg Unit
+pushReadEvent model@{ convoId, userId, events } mid =
+  if Set.member (userId /\ mid) events.folded.read then
+    pure unit
+  else
+    liftEffect
+      (pushEvent model
+         \_ ->
+           EventPayload_SetReadState
+             { convoId
+             , userId
+             , messageId: mid
+             , readState: true
+             }
+      )
 
 pushEvent :: ∀ a r.
   { convoId :: Id "Convo"
