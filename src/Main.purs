@@ -353,6 +353,9 @@ update model@{ userId, convoId } =
             newLeaf =
               TreeMap.findNewLeaf ~$ model.events.folded.messages ~$ folded.messages
 
+            newThread :: Maybe Leaf
+            newThread = newLeaf =<< model.thread
+
             model2 =
               model
                 { events =
@@ -365,8 +368,14 @@ update model@{ userId, convoId } =
                       # fromMaybe ""
                     else
                       model.nameInput
-                , messageParent = model.messageParent >>= newLeaf
-                , thread = model.thread >>= newLeaf
+                , messageParent =
+                    if InputBox.content model.inputBox == "" then
+                      newThread
+                    else
+                      case model.messageParent <#> TreeMap.member ~$ folded.messages of
+                        Just false -> newLeaf =<< model.messageParent
+                        _ -> model.messageParent
+                , thread = newThread
                 , unread = if focused then false else true
                 }
 
@@ -391,20 +400,7 @@ update model@{ userId, convoId } =
 
             Nothing -> pure unit
 
-          case model2.thread of
-            Just mid ->
-              let mleaf = TreeMap.findLeaf mid folded.messages in
-              pure
-              $ model2
-                  { thread = mleaf
-                  , messageParent =
-                      if InputBox.content model.inputBox == "" then
-                        mleaf
-                      else
-                        model2.messageParent
-                  }
-
-            Nothing -> pure model2
+          pure model2
 
         Nothing -> pure model
 

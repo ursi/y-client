@@ -293,7 +293,7 @@ member key tm = lookup key tm # maybe false \_ -> true
 findNewLeaf :: ∀ a b. Ord a => a -> TreeMap a b -> TreeMap a b -> Maybe a
 findNewLeaf key oldTM newTM =
   if member key newTM then
-    Just key
+    findLeaf key newTM
   else
     lookup key oldTM
     >>= _.parent
