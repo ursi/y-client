@@ -154,8 +154,7 @@ update model@{ userId, convoId } =
 
     focusInput =
       afterRender
-      $ HTML.window
-        >>= HTML.document
+      $ HTML.document'
         >>= HTML.getElementById inputId .> map HTML.toMaybeHTMLElement
         >>= maybe (pure unit) (HTML.focus {})
   in
@@ -571,7 +570,7 @@ hitEnter =
   .> case _ of
       Just kbe ->
         if HTML.key kbe == "Enter" then do
-          document <- HTML.window >>= HTML.document
+          document <- HTML.document'
           body <- HTML.unsafeBody document
           bind (HTML.activeElement document)
             case _ of
