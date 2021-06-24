@@ -304,7 +304,7 @@ update model@{ userId, convoId } =
         pure
           (model
              { inputBox = InputBox.reset model.inputBox
-             , messageParent = Nothing
+             , messageParent = Just id
              , thread =
                  case model.thread of
                    Nothing -> Just id
@@ -369,12 +369,18 @@ update model@{ userId, convoId } =
                     else
                       model.nameInput
                 , messageParent =
-                    if InputBox.content model.inputBox == "" then
-                      newThread
-                    else
-                      case model.messageParent <#> TreeMap.member ~$ folded.messages of
-                        Just false -> newLeaf =<< model.messageParent
-                        _ -> model.messageParent
+                    case model.messageParent of
+                      Just mid ->
+                        if
+                          InputBox.content model.inputBox == ""
+                          && TreeMap.isLeaf mid model.events.folded.messages
+                        then
+                          newThread
+                        else
+                          case model.messageParent <#> TreeMap.member ~$ folded.messages of
+                            Just false -> newLeaf =<< model.messageParent
+                            _ -> model.messageParent
+                      Nothing -> Nothing
                 , thread = newThread
                 , unread = if focused then false else true
                 }
@@ -389,9 +395,16 @@ update model@{ userId, convoId } =
           case firstMessage of
             Just mes ->
               if mes.authorId == userId then
-                case model.messageParent of
-                  Just _ -> pure unit
-                  Nothing -> focusInput -- new thread has been created
+                (do
+                   mid <- model.messageParent
+                   { parent } <- TreeMap.lookup mid model2.events.folded.messages
+
+                   Just
+                     case parent of
+                       Just _ -> pure unit
+                       Nothing -> focusInput -- new thread has been created
+                )
+                # fromMaybe (pure unit)
               else
                 liftEffect
                 $ sendNotification
