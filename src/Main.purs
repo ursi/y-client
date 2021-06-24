@@ -12,6 +12,7 @@ import Data.List ((:))
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
+import Data.Set (Set)
 import Data.Set as Set
 import Data.String.Utils (startsWith)
 import Data.String.CodePoints as String
@@ -79,6 +80,7 @@ type Events =
 type FoldedEvents =
   { names :: Map (Id "User") String
   , messages :: MessageTree
+  , read :: Set (Id "User" /\ Id "Message")
   }
 
 type MessageTree = TreeMap (Id "Message") Message
@@ -112,8 +114,9 @@ init _ = do
     , events:
         { raw: []
         , folded:
-            { messages: TreeMap.empty
-            , names: Map.empty
+            { names: Map.empty
+            , messages: TreeMap.empty
+            , read: Set.empty
             }
         }
     , inputBox: InputBox.default
@@ -208,6 +211,17 @@ update model@{ userId, convoId } =
 
     SelectThreadRoot mid -> do
       focusInput
+
+      liftEffect
+        (pushEvent model
+           \_ ->
+             EventPayload_SetReadState
+               { convoId
+               , userId
+               , messageId: mid
+               , readState: true
+               }
+        )
 
       pure
         (model
@@ -496,6 +510,16 @@ foldEvents =
                       \vpc -> vpc { value = vpc.value { content = content } }
                )
            ~$ events.messageEdit
+       , read:
+           foldl
+             (\acc { userId, messageId, readState } ->
+                if readState then
+                  Set.insert (userId /\ messageId) acc
+                else
+                  acc
+             )
+             Set.empty
+             events.setReadState
        }
 
 splitEvents ::
@@ -524,6 +548,13 @@ splitEvents ::
            , userId :: Id "User"
            , messageId :: Id "Message"
            }
+     , setReadState ::
+         List
+           { convoId :: Id "Convo"
+           , userId :: Id "User"
+           , messageId :: Id "Message"
+           , readState :: Boolean
+           }
      }
 splitEvents =
   foldr
@@ -541,7 +572,8 @@ splitEvents =
          EventPayload_MessageDelete data' ->
            acc { messageDelete = data' : acc.messageDelete }
 
-         _ -> acc
+         EventPayload_SetReadState data' ->
+           acc { setReadState = data' : acc.setReadState }
     )
     mempty
 
@@ -654,7 +686,7 @@ threadBar model =
       <#> \mid ->
             TreeMap.lookup mid model.events.folded.messages
             # case _ of
-                Just { value: { content, deleted } } ->
+                Just { value: { authorId, content, deleted } } ->
                   if deleted then
                     mempty
                   else
@@ -669,7 +701,20 @@ threadBar model =
                       , C.overflow "auto"
                       ]
                       [ onNotSelectingClick $ SelectThreadRoot mid ]
-                      [ H.text content ]
+                      [ H.spanS
+                          [ if
+                              authorId == model.userId
+                              || Set.member
+                                   (model.userId /\ mid)
+                                   model.events.folded.read
+                            then
+                              mempty
+                            else
+                              C.color "red"
+                          ]
+                          []
+                          [ H.text content ]
+                      ]
 
                 Nothing -> mempty
     ]
