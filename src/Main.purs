@@ -411,15 +411,18 @@ update model@{ userId, convoId } =
 
           case newThread of
             Just messageId ->
-              liftEffect
-              $ pushEvent model
-                  \_ ->
-                    EventPayload_SetReadState
-                      { convoId
-                      , userId
-                      , messageId
-                      , readState: true
-                      }
+              if Set.member (userId /\ messageId) model2.events.folded.read then
+                pure unit
+              else
+                liftEffect
+                $ pushEvent model2
+                    \_ ->
+                      EventPayload_SetReadState
+                        { convoId
+                        , userId
+                        , messageId
+                        , readState: true
+                        }
 
             Nothing -> pure unit
 
