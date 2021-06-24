@@ -377,7 +377,13 @@ update model@{ userId, convoId } =
               model
                 { events =
                     { raw: newEvents
-                    , folded
+                    , folded:
+                        folded
+                          { read =
+                              case newThread of
+                                Just mid -> Set.insert (userId /\ mid) folded.read
+                                Nothing -> folded.read
+                          }
                     }
                 , nameInput =
                     if model.nameInput == "" then
@@ -402,6 +408,20 @@ update model@{ userId, convoId } =
               # _.messageSend
               # List.head
               <#> _.message
+
+          case newThread of
+            Just messageId ->
+              liftEffect
+              $ pushEvent model
+                  \_ ->
+                    EventPayload_SetReadState
+                      { convoId
+                      , userId
+                      , messageId
+                      , readState: true
+                      }
+
+            Nothing -> pure unit
 
           case firstMessage of
             Just mes ->
