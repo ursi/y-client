@@ -212,16 +212,19 @@ update model@{ userId, convoId } =
     SelectThreadRoot mid -> do
       focusInput
 
-      liftEffect
-        (pushEvent model
-           \_ ->
-             EventPayload_SetReadState
-               { convoId
-               , userId
-               , messageId: mid
-               , readState: true
-               }
-        )
+      if Set.member (userId /\ mid) model.events.folded.read then
+        pure unit
+      else
+        liftEffect
+          (pushEvent model
+             \_ ->
+               EventPayload_SetReadState
+                 { convoId
+                 , userId
+                 , messageId: mid
+                 , readState: true
+                 }
+          )
 
       pure
         (model
