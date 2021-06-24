@@ -211,10 +211,10 @@ update model@{ userId, convoId } =
 
     SelectThreadRoot mid -> do
       focusInput
-      pushReadEvent model mid
+      model2 <- pushReadEvent model mid
 
       pure
-        (model
+        (model2
            { thread = Just mid
            , messageParent = Just mid
            }
@@ -364,13 +364,7 @@ update model@{ userId, convoId } =
               model
                 { events =
                     { raw: newEvents
-                    , folded:
-                        folded
-                          { read =
-                              case newThread of
-                                Just mid -> Set.insert (userId /\ mid) folded.read
-                                Nothing -> folded.read
-                          }
+                    , folded
                     }
                 , nameInput =
                     if model.nameInput == "" then
@@ -396,9 +390,10 @@ update model@{ userId, convoId } =
               # List.head
               <#> _.message
 
-          case newThread of
-            Just messageId -> pushReadEvent model2 messageId
-            Nothing -> pure unit
+          model3 <-
+            case newThread of
+              Just messageId -> pushReadEvent model2 messageId
+              Nothing -> pure model2
 
           case firstMessage of
             Just mes ->
@@ -409,12 +404,12 @@ update model@{ userId, convoId } =
               else
                 liftEffect
                 $ sendNotification
-                    (getName mes.authorId model2.events.folded.names)
+                    (getName mes.authorId model3.events.folded.names)
                     mes.content
 
             Nothing -> pure unit
 
-          pure model2
+          pure model3
 
         Nothing -> pure model
 
@@ -424,11 +419,11 @@ update model@{ userId, convoId } =
         Ws.transmit (ToServer_Pull { convoId }) model.wsClient
       pure model
 
-pushReadEvent :: Model -> Id "Message" -> Update Msg Unit
+pushReadEvent :: Model -> Id "Message" -> Update Msg Model
 pushReadEvent model@{ convoId, userId, events } mid =
   if Set.member (userId /\ mid) events.folded.read then
-    pure unit
-  else
+    pure model
+  else do
     liftEffect
       (pushEvent model
          \_ ->
@@ -438,6 +433,11 @@ pushReadEvent model@{ convoId, userId, events } mid =
              , messageId: mid
              , readState: true
              }
+      )
+
+    pure
+      (model
+         { events { folded { read = Set.insert (userId /\ mid) events.folded.read } } }
       )
 
 pushEvent :: ∀ a r.
