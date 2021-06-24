@@ -371,18 +371,19 @@ update model@{ userId, convoId } =
               # List.head
               <#> _.message
 
-          liftEffect
-            (case firstMessage of
-               Just mes ->
-                 if mes.authorId == userId then
-                   pure unit
-                 else
-                   sendNotification
-                     (getName mes.authorId model2.state.names)
-                     mes.content
+          case firstMessage of
+            Just mes ->
+              if mes.authorId == userId then
+                case model.messageParent of
+                  Just _ -> pure unit
+                  Nothing -> focusInput -- new thread has been created
+              else
+                liftEffect
+                $ sendNotification
+                    (getName mes.authorId model2.state.names)
+                    mes.content
 
-               Nothing -> pure unit
-            )
+            Nothing -> pure unit
 
           case model2.thread of
             Just mid ->
