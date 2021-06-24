@@ -61,7 +61,7 @@ type Model =
   { convoId :: Id "Convo"
   , userId :: Id "User"
   , wsClient :: Client ToServer ToClient
-  , state :: State
+  , events :: Events
   , inputBox :: InputBox
   , thread :: Maybe Leaf
   , messageParent :: Maybe (Id "Message")
@@ -71,9 +71,13 @@ type Model =
 
 type Leaf = (Id "Message")
 
-type State =
-  { events :: Array Event
-  , names :: Map (Id "User") String
+type Events =
+  { raw :: Array Event
+  , folded :: FoldedEvents
+  }
+
+type FoldedEvents =
+  { names :: Map (Id "User") String
   , messages :: MessageTree
   }
 
@@ -105,10 +109,12 @@ init _ = do
     { convoId
     , userId
     , wsClient
-    , state:
-        { events: []
-        , messages: TreeMap.empty
-        , names: Map.empty
+    , events:
+        { raw: []
+        , folded:
+            { messages: TreeMap.empty
+            , names: Map.empty
+            }
         }
     , inputBox: InputBox.default
     , thread: Nothing
@@ -168,7 +174,7 @@ update model@{ userId, convoId } =
       pure
         (model
            { messageParent = Just mid
-           , thread = TreeMap.findLeaf mid model.state.messages
+           , thread = TreeMap.findLeaf mid model.events.folded.messages
            }
         )
 
@@ -229,7 +235,7 @@ update model@{ userId, convoId } =
       else if content == "/delete" then
         (do
            mid <- model.messageParent
-           { value: mes } <- TreeMap.lookup mid model.state.messages
+           { value: mes } <- TreeMap.lookup mid model.events.folded.messages
 
            Just
              (if mes.authorId == userId then do
@@ -252,7 +258,7 @@ update model@{ userId, convoId } =
       else if startsWith "/edit " content then
         (do
            mid <- model.messageParent
-           { value: mes } <- TreeMap.lookup mid model.state.messages
+           { value: mes } <- TreeMap.lookup mid model.events.folded.messages
 
            Just
              (if mes.authorId == userId then do
@@ -314,7 +320,7 @@ update model@{ userId, convoId } =
         pure
         $ (do
              mid <- model2.messageParent
-             { value: mes } <- TreeMap.lookup mid model2.state.messages
+             { value: mes } <- TreeMap.lookup mid model2.events.folded.messages
              Just
                if mes.deleted then
                  model2
@@ -337,24 +343,25 @@ update model@{ userId, convoId } =
           focused <- liftEffect hasFocus
 
           let
-            newEvents = addEvents model.state.events events
-            processedEvents = processEvents newEvents
+            newEvents :: Array Event
+            newEvents = addEvents model.events.raw events
 
-            names :: Map (Id "User") String
-            names = processedEvents.names
-
-            messages :: MessageTree
-            messages = processedEvents.messages
+            folded :: FoldedEvents
+            folded = foldEvents newEvents
 
             newLeaf :: Id "Message" -> Maybe (Id "Message")
-            newLeaf = TreeMap.findNewLeaf ~$ model.state.messages ~$ messages
+            newLeaf =
+              TreeMap.findNewLeaf ~$ model.events.folded.messages ~$ folded.messages
 
             model2 =
               model
-                { state = { events: newEvents, names, messages }
+                { events =
+                    { raw: newEvents
+                    , folded
+                    }
                 , nameInput =
                     if model.nameInput == "" then
-                      Map.lookup userId names
+                      Map.lookup userId folded.names
                       # fromMaybe ""
                     else
                       model.nameInput
@@ -379,14 +386,14 @@ update model@{ userId, convoId } =
               else
                 liftEffect
                 $ sendNotification
-                    (getName mes.authorId model2.state.names)
+                    (getName mes.authorId model2.events.folded.names)
                     mes.content
 
             Nothing -> pure unit
 
           case model2.thread of
             Just mid ->
-              let mleaf = TreeMap.findLeaf mid messages in
+              let mleaf = TreeMap.findLeaf mid folded.messages in
               pure
               $ model2
                   { thread = mleaf
@@ -456,12 +463,8 @@ addEvents events newEvents =
 eventTime :: Event -> Instant
 eventTime (Event e) = e.time
 
-processEvents ::
-  Array Event
-  -> { names :: Map (Id "User") String
-     , messages :: MessageTree
-     }
-processEvents =
+foldEvents :: Array Event -> FoldedEvents
+foldEvents =
   splitEvents
   .> \events ->
        { names:
@@ -634,7 +637,7 @@ threadBar model =
   let
     leaves :: Array (Id "Message")
     leaves =
-      TreeMap.leaves model.state.messages
+      TreeMap.leaves model.events.folded.messages
       # Array.sortBy
           (\a b ->
             compare
@@ -653,7 +656,7 @@ threadBar model =
         []
       $ leaves
       <#> \mid ->
-            TreeMap.lookup mid model.state.messages
+            TreeMap.lookup mid model.events.folded.messages
             # case _ of
                 Just { value: { content, deleted } } ->
                   if deleted then
@@ -698,7 +701,7 @@ threadView model =
       mthread :: Maybe (Thread Message)
       mthread =
         model.thread
-        >>= TreeMap.getThread ~$ model.state.messages
+        >>= TreeMap.getThread ~$ model.events.folded.messages
 
       messageInput :: Html Msg
       messageInput =
@@ -769,8 +772,8 @@ threadView model =
                             , C.marginBottom "0.7em"
                             ]
                             []
-                            [ H.text $ getName mes.authorId model.state.names
-                            , getParent mes model.state.messages
+                            [ H.text $ getName mes.authorId model.events.folded.names
+                            , getParent mes model.events.folded.messages
                               <#> formatTimeDiff <. _.timeSent ~$ mes.timeSent
                               # case _ of
                                   Just diff ->
