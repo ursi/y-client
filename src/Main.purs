@@ -724,12 +724,13 @@ threadBar model =
                       case TreeMap.siblings mid messages of
                         Right [] -> true
                         Right siblings ->
-                          timeSent
+                          (true /\ timeSent)
                           <= foldl
-                               (\oldest m ->
-                                  min oldest m.timeSent
+                               (\(chosen /\ oldest) m ->
+                                  min chosen (TreeMap.isLeaf m.id messages)
+                                  /\ min oldest m.timeSent
                                )
-                               timeSent
+                               (true /\ timeSent)
                                siblings
                         Left _ -> false
 
