@@ -767,6 +767,7 @@ var PS = {};
   exports["Eq"] = Eq;
   exports["eq"] = eq;
   exports["notEq"] = notEq;
+  exports["eqBoolean"] = eqBoolean;
   exports["eqInt"] = eqInt;
   exports["eqNumber"] = eqNumber;
   exports["eqChar"] = eqChar;
@@ -1080,7 +1081,9 @@ var PS = {};
         };
       };
     };
-  };                                         
+  };
+
+  exports.ordBooleanImpl = unsafeCompareImpl;
   exports.ordIntImpl = unsafeCompareImpl;
   exports.ordNumberImpl = unsafeCompareImpl;
   exports.ordStringImpl = unsafeCompareImpl;
@@ -1156,6 +1159,9 @@ var PS = {};
   var ordChar = new Ord(function () {
       return Data_Eq.eqChar;
   }, $foreign.ordCharImpl(Data_Ordering.LT.value)(Data_Ordering.EQ.value)(Data_Ordering.GT.value));
+  var ordBoolean = new Ord(function () {
+      return Data_Eq.eqBoolean;
+  }, $foreign.ordBooleanImpl(Data_Ordering.LT.value)(Data_Ordering.EQ.value)(Data_Ordering.GT.value));
   var compare = function (dict) {
       return dict.compare;
   };
@@ -1201,6 +1207,7 @@ var PS = {};
   exports["lessThanOrEq"] = lessThanOrEq;
   exports["comparing"] = comparing;
   exports["min"] = min;
+  exports["ordBoolean"] = ordBoolean;
   exports["ordInt"] = ordInt;
   exports["ordNumber"] = ordNumber;
   exports["ordString"] = ordString;
@@ -10235,8 +10242,8 @@ var PS = {};
   };
   var pushReadEvent = function (v) {
       return function (mid) {
-          var $91 = Data_Set.member(Data_Tuple.ordTuple(Y_Shared_Id.ordId)(Y_Shared_Id.ordId))(new Data_Tuple.Tuple(v.userId, mid))(v.events.folded.read);
-          if ($91) {
+          var $92 = Data_Set.member(Data_Tuple.ordTuple(Y_Shared_Id.ordId)(Y_Shared_Id.ordId))(new Data_Tuple.Tuple(v.userId, mid))(v.events.folded.read);
+          if ($92) {
               return Control_Applicative.pure(Control_Monad_Writer_Trans.applicativeWriterT(Platform["$_MonoidCmd_10"])(Effect.applicativeEffect))(v);
           };
           return Control_Bind.discard(Control_Bind.discardUnit)(Control_Monad_Writer_Trans.bindWriterT(Platform["$_SemigroupCmd_9"])(Effect.bindEffect))(Effect_Class.liftEffect(Control_Monad_Writer_Trans.monadEffectWriter(Platform["$_MonoidCmd_10"])(Effect_Class.monadEffectEffect))(pushEvent(v)(function (v1) {
@@ -10280,9 +10287,9 @@ var PS = {};
       };
   };
   var inputWithHeight = Attribute.on(Producer.produceab)("input")((function () {
-      var $226 = WHATWG_HTML_Types.toMaybeHTMLTextAreaElement();
-      var $227 = WHATWG_DOM_Event.unsafeTarget();
-      return function ($228) {
+      var $230 = WHATWG_HTML_Types.toMaybeHTMLTextAreaElement();
+      var $231 = WHATWG_DOM_Event.unsafeTarget();
+      return function ($232) {
           return (function (v) {
               if (v instanceof Data_Maybe.Just) {
                   return Control_Apply.lift2(Effect.applyEffect)(function (content) {
@@ -10294,8 +10301,8 @@ var PS = {};
               if (v instanceof Data_Maybe.Nothing) {
                   return Control_Applicative.pure(Effect.applicativeEffect)(Data_Maybe.Nothing.value);
               };
-              throw new Error("Failed pattern match at Main (line 945, column 6 - line 957, column 31): " + [ v.constructor.name ]);
-          })($226($227($228)));
+              throw new Error("Failed pattern match at Main (line 946, column 6 - line 958, column 31): " + [ v.constructor.name ]);
+          })($230($231($232)));
       };
   })());
   var inputId = "input";
@@ -10339,19 +10346,19 @@ var PS = {};
       });
   };
   var hitEnter = (function () {
-      var $229 = WHATWG_HTML_Types.toMaybeKeyboardEvent();
-      return function ($230) {
+      var $233 = WHATWG_HTML_Types.toMaybeKeyboardEvent();
+      return function ($234) {
           return (function (v) {
               if (v instanceof Data_Maybe.Just) {
-                  var $105 = WHATWG_HTML_KeyboardEvent.key(v.value0) === "Enter";
-                  if ($105) {
+                  var $106 = WHATWG_HTML_KeyboardEvent.key(v.value0) === "Enter";
+                  if ($106) {
                       return function __do() {
                           var document = WHATWG_HTML_Window["document'"]();
                           var body = WHATWG_HTML_Document.unsafeBody(document)();
                           var v1 = WHATWG_HTML_Mixin_DocumentOrShadowRoot.activeElement()(document)();
                           if (v1 instanceof Data_Maybe.Just) {
-                              var $107 = Data_Eq.eq(RefEq.eqRefEq)(new RefEq.RefEq(body))(new RefEq.RefEq(v1.value0));
-                              if ($107) {
+                              var $108 = Data_Eq.eq(RefEq.eqRefEq)(new RefEq.RefEq(body))(new RefEq.RefEq(v1.value0));
+                              if ($108) {
                                   Control_Bind.bind(Effect.bindEffect)(Data_Functor.map(Effect.functorEffect)(WHATWG_HTML_Types.toMaybeHTMLElement())(WHATWG_DOM_Mixin_NonElementParentNode.getElementById()(inputId)(document)))(Data_Maybe.maybe(Control_Applicative.pure(Effect.applicativeEffect)(Data_Unit.unit))(WHATWG_HTML_Mixin_HTMLOrSVGElement.focus()()({})))();
                                   WHATWG_DOM_Event.preventDefault()(v.value0)();
                                   return Data_Maybe.Nothing.value;
@@ -10370,7 +10377,7 @@ var PS = {};
                   return Control_Applicative.pure(Effect.applicativeEffect)(Data_Maybe.Nothing.value);
               };
               throw new Error("Failed pattern match at Main (line 629, column 6 - line 651, column 30): " + [ v.constructor.name ]);
-          })($229($230));
+          })($233($234));
       };
   })();
   var getParent = function (v) {
@@ -10395,29 +10402,29 @@ var PS = {};
               };
           };
           var seconds = (Y_Shared_Util_Instant.asMilliseconds(iNew) - Y_Shared_Util_Instant.asMilliseconds(iOld)) / 1000.0;
-          var $113 = Data_Int.round(seconds) < 120;
-          if ($113) {
+          var $114 = Data_Int.round(seconds) < 120;
+          if ($114) {
               return show$prime(seconds)("s");
           };
           var minutes = seconds / 60.0;
-          var $114 = Data_Int.round(minutes) < 120;
-          if ($114) {
+          var $115 = Data_Int.round(minutes) < 120;
+          if ($115) {
               return show$prime(minutes)("m");
           };
           var hours = minutes / 60.0;
-          var $115 = hours < 48.0;
-          if ($115) {
+          var $116 = hours < 48.0;
+          if ($116) {
               return show$prime(hours)("h");
           };
           var days = hours / 24.0;
-          var $116 = days < 14.0;
-          if ($116) {
+          var $117 = days < 14.0;
+          if ($117) {
               return show$prime(days)("d");
           };
           return show$prime(days / 7.0)("w");
       };
   };
-  var foldEvents = function ($231) {
+  var foldEvents = function ($235) {
       return (function (events) {
           return {
               names: Data_Foldable.foldl(Data_List_Types.foldableList)(function (acc) {
@@ -10426,10 +10433,10 @@ var PS = {};
                   };
               })(Data_Map_Internal.empty)(events.setName),
               messages: (function () {
-                  var initialTM = TreeMap.toTreeMap(Y_Shared_Id.ordId)(Data_Functor.mapFlipped(Data_List_Types.functorList)(events.messageSend)(function ($232) {
+                  var initialTM = TreeMap.toTreeMap(Y_Shared_Id.ordId)(Data_Functor.mapFlipped(Data_List_Types.functorList)(events.messageSend)(function ($236) {
                       return toIVP((function (v) {
                           return v.message;
-                      })($232));
+                      })($236));
                   }));
                   return PointFree.applySecond(Data_Foldable.foldl(Data_List_Types.foldableList)(function (acc) {
                       return function (v) {
@@ -10451,12 +10458,12 @@ var PS = {};
                       };
                   }))(events.messageEdit)(Data_Foldable.foldl(Data_List_Types.foldableList)(function (acc) {
                       return function (v) {
-                          return TreeMap.removeLeafRecursive(Y_Shared_Id.ordId)(function ($233) {
+                          return TreeMap.removeLeafRecursive(Y_Shared_Id.ordId)(function ($237) {
                               return (function (v1) {
                                   return v1.deleted;
                               })((function (v1) {
                                   return v1.value;
-                              })($233));
+                              })($237));
                           })(v.messageId)(TreeMap.edit(Y_Shared_Id.ordId)(v.messageId)(function (vpc) {
                               return {
                                   value: {
@@ -10484,7 +10491,7 @@ var PS = {};
                   };
               })(Data_Set.empty)(events.setReadState)
           };
-      })(splitEvents($231));
+      })(splitEvents($235));
   };
   var focusHandler = function (v) {
       return Control_Applicative.pure(Effect.applicativeEffect)(new Data_Maybe.Just(Focused.value));
@@ -10496,19 +10503,19 @@ var PS = {};
       return v.time;
   };
   var detectInputEvents = Attribute.on(Producer.produceab)("keydown")((function () {
-      var $234 = WHATWG_HTML_Types.toMaybeKeyboardEvent();
-      return function ($235) {
+      var $238 = WHATWG_HTML_Types.toMaybeKeyboardEvent();
+      return function ($239) {
           return (function (v) {
               if (v instanceof Data_Maybe.Just) {
-                  var $132 = WHATWG_HTML_KeyboardEvent.key(v.value0) === "Enter" && (WHATWG_HTML_KeyboardEvent.ctrlKey(v.value0) || WHATWG_HTML_KeyboardEvent.metaKey(v.value0));
-                  if ($132) {
+                  var $133 = WHATWG_HTML_KeyboardEvent.key(v.value0) === "Enter" && (WHATWG_HTML_KeyboardEvent.ctrlKey(v.value0) || WHATWG_HTML_KeyboardEvent.metaKey(v.value0));
+                  if ($133) {
                       return function __do() {
                           WHATWG_DOM_Event.preventDefault()(v.value0)();
                           return new Data_Maybe.Just(SendMessage.value);
                       };
                   };
-                  var $133 = WHATWG_HTML_KeyboardEvent.key(v.value0) === "z" && WHATWG_HTML_KeyboardEvent.ctrlKey(v.value0);
-                  if ($133) {
+                  var $134 = WHATWG_HTML_KeyboardEvent.key(v.value0) === "z" && WHATWG_HTML_KeyboardEvent.ctrlKey(v.value0);
+                  if ($134) {
                       return function __do() {
                           WHATWG_DOM_Event.preventDefault()(v.value0)();
                           return new Data_Maybe.Just(Undo.value);
@@ -10519,8 +10526,8 @@ var PS = {};
               if (v instanceof Data_Maybe.Nothing) {
                   return Control_Applicative.pure(Effect.applicativeEffect)(Data_Maybe.Nothing.value);
               };
-              throw new Error("Failed pattern match at Main (line 963, column 6 - line 974, column 31): " + [ v.constructor.name ]);
-          })($234($235));
+              throw new Error("Failed pattern match at Main (line 964, column 6 - line 975, column 31): " + [ v.constructor.name ]);
+          })($238($239));
       };
   })());
   var addEvents = function (events) {
@@ -10534,8 +10541,8 @@ var PS = {};
               return v.head;
           });
           if (oldEnd instanceof Data_Maybe.Just && newHead instanceof Data_Maybe.Just) {
-              var $137 = Data_Ord.lessThanOrEq(Y_Shared_Util_Instant.ordInstant)(oldEnd.value0.time)(newHead.value0.time);
-              if ($137) {
+              var $138 = Data_Ord.lessThanOrEq(Y_Shared_Util_Instant.ordInstant)(oldEnd.value0.time)(newHead.value0.time);
+              if ($138) {
                   return potentialFinalArray;
               };
               return Data_Array.sortWith(Y_Shared_Util_Instant.ordInstant)(eventTime)(potentialFinalArray);
@@ -10546,10 +10553,10 @@ var PS = {};
   var update = function (v) {
       var v1 = Debug.log(v);
       var focusInput = Platform.afterRender(Control_Bind.bind(Effect.bindEffect)(Control_Bind.bind(Effect.bindEffect)(WHATWG_HTML_Window["document'"])((function () {
-          var $236 = Data_Functor.map(Effect.functorEffect)(WHATWG_HTML_Types.toMaybeHTMLElement());
-          var $237 = WHATWG_DOM_Mixin_NonElementParentNode.getElementById()(inputId);
-          return function ($238) {
-              return $236($237($238));
+          var $240 = Data_Functor.map(Effect.functorEffect)(WHATWG_HTML_Types.toMaybeHTMLElement());
+          var $241 = WHATWG_DOM_Mixin_NonElementParentNode.getElementById()(inputId);
+          return function ($242) {
+              return $240($241($242));
           };
       })()))(Data_Maybe.maybe(Control_Applicative.pure(Effect.applicativeEffect)(Data_Unit.unit))(WHATWG_HTML_Mixin_HTMLOrSVGElement.focus()()({}))));
       return function (v2) {
@@ -10681,17 +10688,17 @@ var PS = {};
                       wsClient: v.wsClient
                   };
                   var content = InputBox.content(v.inputBox);
-                  var $146 = content === "";
-                  if ($146) {
+                  var $147 = content === "";
+                  if ($147) {
                       return Control_Applicative.pure(Control_Monad_Writer_Trans.applicativeWriterT(Platform["$_MonoidCmd_10"])(Effect.applicativeEffect))(v);
                   };
-                  var $147 = content === "/delete";
-                  if ($147) {
+                  var $148 = content === "/delete";
+                  if ($148) {
                       return Data_Maybe.fromMaybe(Control_Applicative.pure(Control_Monad_Writer_Trans.applicativeWriterT(Platform["$_MonoidCmd_10"])(Effect.applicativeEffect))(v))(Control_Bind.bind(Data_Maybe.bindMaybe)(v.messageParent)(function (mid) {
                           return Control_Bind.bind(Data_Maybe.bindMaybe)(TreeMap.lookup(Y_Shared_Id.ordId)(mid)(v.events.folded.messages))(function (v3) {
                               return new Data_Maybe.Just((function () {
-                                  var $149 = Data_Eq.eq(Y_Shared_Id.eqId)(v3.value.authorId)(v.userId);
-                                  if ($149) {
+                                  var $150 = Data_Eq.eq(Y_Shared_Id.eqId)(v3.value.authorId)(v.userId);
+                                  if ($150) {
                                       return Control_Bind.discard(Control_Bind.discardUnit)(Control_Monad_Writer_Trans.bindWriterT(Platform["$_SemigroupCmd_9"])(Effect.bindEffect))(Effect_Class.liftEffect(Control_Monad_Writer_Trans.monadEffectWriter(Platform["$_MonoidCmd_10"])(Effect_Class.monadEffectEffect))(pushEvent(v)(function (v4) {
                                           return new Y_Shared_Event.EventPayload_MessageDelete({
                                               convoId: v.convoId,
@@ -10717,13 +10724,13 @@ var PS = {};
                           });
                       }));
                   };
-                  var $151 = Data_String_Utils.startsWith("/edit ")(content);
-                  if ($151) {
+                  var $152 = Data_String_Utils.startsWith("/edit ")(content);
+                  if ($152) {
                       return Data_Maybe.fromMaybe(Control_Applicative.pure(Control_Monad_Writer_Trans.applicativeWriterT(Platform["$_MonoidCmd_10"])(Effect.applicativeEffect))(v))(Control_Bind.bind(Data_Maybe.bindMaybe)(v.messageParent)(function (mid) {
                           return Control_Bind.bind(Data_Maybe.bindMaybe)(TreeMap.lookup(Y_Shared_Id.ordId)(mid)(v.events.folded.messages))(function (v3) {
                               return new Data_Maybe.Just((function () {
-                                  var $153 = Data_Eq.eq(Y_Shared_Id.eqId)(v3.value.authorId)(v.userId);
-                                  if ($153) {
+                                  var $154 = Data_Eq.eq(Y_Shared_Id.eqId)(v3.value.authorId)(v.userId);
+                                  if ($154) {
                                       return Control_Bind.discard(Control_Bind.discardUnit)(Control_Monad_Writer_Trans.bindWriterT(Platform["$_SemigroupCmd_9"])(Effect.bindEffect))(Effect_Class.liftEffect(Control_Monad_Writer_Trans.monadEffectWriter(Platform["$_MonoidCmd_10"])(Effect_Class.monadEffectEffect))(pushEvent(v)(function (v4) {
                                           return new Y_Shared_Event.EventPayload_MessageEdit({
                                               convoId: v.convoId,
@@ -10799,8 +10806,8 @@ var PS = {};
                   userId: v.userId,
                   wsClient: v.wsClient
               };
-              var $157 = v2.value0 === "/edit " && InputBox.prevContent(model2.inputBox) === "/edit";
-              if ($157) {
+              var $158 = v2.value0 === "/edit " && InputBox.prevContent(model2.inputBox) === "/edit";
+              if ($158) {
                   return Control_Applicative.pure(Control_Monad_Writer_Trans.applicativeWriterT(Platform["$_MonoidCmd_10"])(Effect.applicativeEffect))(Data_Maybe.fromMaybe(model2)(Control_Bind.bind(Data_Maybe.bindMaybe)(model2.messageParent)(function (mid) {
                       return Control_Bind.bind(Data_Maybe.bindMaybe)(TreeMap.lookup(Y_Shared_Id.ordId)(mid)(model2.events.folded.messages))(function (v3) {
                           return new Data_Maybe.Just((function () {
@@ -10837,16 +10844,16 @@ var PS = {};
                               folded: folded
                           },
                           nameInput: (function () {
-                              var $164 = v.nameInput === "";
-                              if ($164) {
+                              var $165 = v.nameInput === "";
+                              if ($165) {
                                   return Data_Maybe.fromMaybe("")(Data_Map_Internal.lookup(Y_Shared_Id.ordId)(v.userId)(folded.names));
                               };
                               return v.nameInput;
                           })(),
                           messageParent: (function () {
                               if (v.messageParent instanceof Data_Maybe.Just) {
-                                  var $166 = InputBox.content(v.inputBox) === "" && TreeMap.isLeaf(Y_Shared_Id.ordId)(v.messageParent.value0)(v.events.folded.messages);
-                                  if ($166) {
+                                  var $167 = InputBox.content(v.inputBox) === "" && TreeMap.isLeaf(Y_Shared_Id.ordId)(v.messageParent.value0)(v.events.folded.messages);
+                                  if ($167) {
                                       return newThread;
                                   };
                                   var v4 = Data_Functor.mapFlipped(Data_Maybe.functorMaybe)(v.messageParent)(PointFree.applySecond(TreeMap.member(Y_Shared_Id.ordId))(folded.messages));
@@ -10888,8 +10895,8 @@ var PS = {};
                       })())(function (model3) {
                           return Control_Bind.discard(Control_Bind.discardUnit)(Control_Monad_Writer_Trans.bindWriterT(Platform["$_SemigroupCmd_9"])(Effect.bindEffect))((function () {
                               if (firstMessage instanceof Data_Maybe.Just) {
-                                  var $174 = Data_Eq.eq(Y_Shared_Id.eqId)(firstMessage.value0.authorId)(v.userId);
-                                  if ($174) {
+                                  var $175 = Data_Eq.eq(Y_Shared_Id.eqId)(firstMessage.value0.authorId)(v.userId);
+                                  if ($175) {
                                       return Data_Maybe.fromMaybe(Control_Applicative.pure(Control_Monad_Writer_Trans.applicativeWriterT(Platform["$_MonoidCmd_10"])(Effect.applicativeEffect))(Data_Unit.unit))(Control_Bind.bind(Data_Maybe.bindMaybe)(v.messageParent)(function (mid) {
                                           return Control_Bind.bind(Data_Maybe.bindMaybe)(TreeMap.lookup(Y_Shared_Id.ordId)(mid)(model3.events.folded.messages))(function (v3) {
                                               return new Data_Maybe.Just((function () {
@@ -10937,7 +10944,7 @@ var PS = {};
           throw new Error("Failed pattern match at Main (line 168, column 3 - line 432, column 17): " + [ v2.constructor.name ]);
       };
   };
-  var $dollar_EqMsg_70 = new Data_Eq.Eq(function (v) {
+  var $dollar_EqMsg_71 = new Data_Eq.Eq(function (v) {
       return function (v1) {
           if (v instanceof UpdateInputBox && v1 instanceof UpdateInputBox) {
               return v.value0 === v1.value0 && v.value1 === v1.value1;
@@ -10976,13 +10983,13 @@ var PS = {};
       };
   });
   var nameChanger = function (model) {
-      return Html.divS([ Css.margin(".3em") ])([  ])([ Html.inputS([ Design.inputStyles, Css.border("none"), Css.borderRadius("5px"), Css.padding("3px") ])([ Attribute.value(model.nameInput), Attribute.onInput(Producer.produceab)(UpdateNameInput.create) ]), Html.buttonS([ Css.marginLeft("5px") ])([ Attribute.onClick(Producer.producea($dollar_EqMsg_70))(UpdateName.value) ])([ Html.text("Update Name") ]) ]);
+      return Html.divS([ Css.margin(".3em") ])([  ])([ Html.inputS([ Design.inputStyles, Css.border("none"), Css.borderRadius("5px"), Css.padding("3px") ])([ Attribute.value(model.nameInput), Attribute.onInput(Producer.produceab)(UpdateNameInput.create) ]), Html.buttonS([ Css.marginLeft("5px") ])([ Attribute.onClick(Producer.producea($dollar_EqMsg_71))(UpdateName.value) ])([ Html.text("Update Name") ]) ]);
   };
   var onNotSelectingClick = (function () {
-      var $239 = Attribute.on(Producer.produceProducer)("click");
-      var $240 = Producer.producer($dollar_EqMsg_70)(onNotSelectingClickRE);
-      return function ($241) {
-          return $239($240($241));
+      var $243 = Attribute.on(Producer.produceProducer)("click");
+      var $244 = Producer.producer($dollar_EqMsg_71)(onNotSelectingClickRE);
+      return function ($245) {
+          return $243($244($245));
       };
   })();
   var threadBar = function (model) {
@@ -10991,7 +10998,7 @@ var PS = {};
               return Data_Ord.compare(Y_Shared_Util_Instant.ordInstant)((Data_Tuple.snd(b)).value.timeSent)((Data_Tuple.snd(a)).value.timeSent);
           };
       })(TreeMap.leaves(model.events.folded.messages)))(Data_Tuple.fst);
-      return Platform.batch([ Html.divS([ Css.margin("5px") ])([  ])([ Html.button([ Attribute.onClick(Producer.producea($dollar_EqMsg_70))(NewThread.value) ])([ Html.text("New Thread") ]) ]), Html.divS([ Css.overflow("auto"), Css.borderJ([ Design.vars.borderWidth1, "solid" ]) ])([  ])(Data_Functor.mapFlipped(Data_Functor.functorArray)(leaves)(function (mid) {
+      return Platform.batch([ Html.divS([ Css.margin("5px") ])([  ])([ Html.button([ Attribute.onClick(Producer.producea($dollar_EqMsg_71))(NewThread.value) ])([ Html.text("New Thread") ]) ]), Html.divS([ Css.overflow("auto"), Css.borderJ([ Design.vars.borderWidth1, "solid" ]) ])([  ])(Data_Functor.mapFlipped(Data_Functor.functorArray)(leaves)(function (mid) {
           return (function (v) {
               if (v instanceof Data_Maybe.Just) {
                   var isRead = Data_Set.member(Data_Tuple.ordTuple(Y_Shared_Id.ordId)(Y_Shared_Id.ordId))(new Data_Tuple.Tuple(model.userId, mid))(model.events.folded.read);
@@ -11001,30 +11008,30 @@ var PS = {};
                           return true;
                       };
                       if (v1 instanceof Data_Either.Right) {
-                          return Data_Ord.lessThanOrEq(Y_Shared_Util_Instant.ordInstant)(v.value0.value.timeSent)(Data_Foldable.foldl(Data_Foldable.foldableArray)(function (oldest) {
+                          return Data_Ord.lessThanOrEq(Data_Tuple.ordTuple(Data_Ord.ordBoolean)(Y_Shared_Util_Instant.ordInstant))(new Data_Tuple.Tuple(true, v.value0.value.timeSent))(Data_Foldable.foldl(Data_Foldable.foldableArray)(function (v2) {
                               return function (m) {
-                                  return Data_Ord.min(Y_Shared_Util_Instant.ordInstant)(oldest)(m.timeSent);
+                                  return new Data_Tuple.Tuple(Data_Ord.min(Data_Ord.ordBoolean)(v2.value0)(TreeMap.isLeaf(Y_Shared_Id.ordId)(m.id)(model.events.folded.messages)), Data_Ord.min(Y_Shared_Util_Instant.ordInstant)(v2.value1)(m.timeSent));
                               };
-                          })(v.value0.value.timeSent)(v1.value0));
+                          })(new Data_Tuple.Tuple(true, v.value0.value.timeSent))(v1.value0));
                       };
                       if (v1 instanceof Data_Either.Left) {
                           return false;
                       };
-                      throw new Error("Failed pattern match at Main (line 722, column 23 - line 732, column 40): " + [ v1.constructor.name ]);
+                      throw new Error("Failed pattern match at Main (line 722, column 23 - line 733, column 40): " + [ v1.constructor.name ]);
                   })();
-                  var $205 = !isChosen && (isRead && Data_Eq.notEq(Data_Maybe.eqMaybe(Y_Shared_Id.eqId))(model.thread)(new Data_Maybe.Just(mid))) || v.value0.value.deleted;
-                  if ($205) {
+                  var $209 = !isChosen && (isRead && Data_Eq.notEq(Data_Maybe.eqMaybe(Y_Shared_Id.eqId))(model.thread)(new Data_Maybe.Just(mid))) || v.value0.value.deleted;
+                  if ($209) {
                       return Data_Monoid.mempty(Data_Batched["$_MonoidBatched_7"]);
                   };
                   return Html.divS([ (function () {
-                      var $206 = Data_Eq.eq(Data_Maybe.eqMaybe(Y_Shared_Id.eqId))(model.thread)(new Data_Maybe.Just(mid));
-                      if ($206) {
+                      var $210 = Data_Eq.eq(Data_Maybe.eqMaybe(Y_Shared_Id.eqId))(model.thread)(new Data_Maybe.Just(mid));
+                      if ($210) {
                           return Css.background(Design.vars.accent1);
                       };
                       return Data_Monoid.mempty(Data_Batched["$_MonoidBatched_7"]);
                   })(), Design.following([ Css.borderTop("1px solid") ]), Css.padding(".3em"), Css.whiteSpace("pre-wrap"), Css.overflow("auto") ])([ onNotSelectingClick(new SelectThread(mid)) ])([ Html.spanS([ (function () {
-                      var $207 = Data_Eq.eq(Y_Shared_Id.eqId)(v.value0.value.authorId)(model.userId) || isRead;
-                      if ($207) {
+                      var $211 = Data_Eq.eq(Y_Shared_Id.eqId)(v.value0.value.authorId)(model.userId) || isRead;
+                      if ($211) {
                           return Data_Monoid.mempty(Data_Batched["$_MonoidBatched_7"]);
                       };
                       return Css.color("#ff4040");
@@ -11033,14 +11040,14 @@ var PS = {};
               if (v instanceof Data_Maybe.Nothing) {
                   return Data_Monoid.mempty(Data_Batched["$_MonoidBatched_7"]);
               };
-              throw new Error("Failed pattern match at Main (line 717, column 15 - line 761, column 34): " + [ v.constructor.name ]);
+              throw new Error("Failed pattern match at Main (line 717, column 15 - line 762, column 34): " + [ v.constructor.name ]);
           })(TreeMap.lookup(Y_Shared_Id.ordId)(mid)(model.events.folded.messages));
       })) ]);
   };
   var threadView = function (model) {
       var mthread = Control_Bind.bind(Data_Maybe.bindMaybe)(model.thread)(PointFree.applySecond(TreeMap.getThread(Y_Shared_Id.ordId))(model.events.folded.messages));
       var messageList = (function () {
-          var $242 = Data_Functor.map(Data_Functor.functorArray)(function (v) {
+          var $246 = Data_Functor.map(Data_Functor.functorArray)(function (v) {
               var createMessage = function (isSibling) {
                   return function (styles) {
                       return function (mes) {
@@ -11050,8 +11057,8 @@ var PS = {};
                               };
                               return SelectMessageParent.create;
                           })()(mes.id)) ])([ (function () {
-                              var $218 = Data_Eq.eq(Data_Maybe.eqMaybe(Y_Shared_Id.eqId))(model.messageParent)(new Data_Maybe.Just(mes.id));
-                              if ($218) {
+                              var $222 = Data_Eq.eq(Data_Maybe.eqMaybe(Y_Shared_Id.eqId))(model.messageParent)(new Data_Maybe.Just(mes.id));
+                              if ($222) {
                                   return Html.divS([ Css.position("absolute"), Css.background(Css_Functions.linearGradient([ "to right", Design.vars.accent1 + " 20%", "transparent" ])), Css.width("20px"), Css.height("100%"), Css.top("0"), Css.left("0") ])([  ])([  ]);
                               };
                               return Data_Monoid.mempty(Data_Batched["$_MonoidBatched_7"]);
@@ -11066,11 +11073,11 @@ var PS = {};
                                   if (v1 instanceof Data_Maybe.Nothing) {
                                       return Data_Monoid.mempty(Data_Batched["$_MonoidBatched_7"]);
                                   };
-                                  throw new Error("Failed pattern match at Main (line 861, column 33 - line 867, column 52): " + [ v1.constructor.name ]);
-                              })(Data_Functor.mapFlipped(Data_Maybe.functorMaybe)(getParent(mes)(model.events.folded.messages))(PointFree.applySecond(function ($245) {
+                                  throw new Error("Failed pattern match at Main (line 862, column 33 - line 868, column 52): " + [ v1.constructor.name ]);
+                              })(Data_Functor.mapFlipped(Data_Maybe.functorMaybe)(getParent(mes)(model.events.folded.messages))(PointFree.applySecond(function ($249) {
                                   return formatTimeDiff((function (v1) {
                                       return v1.timeSent;
-                                  })($245));
+                                  })($249));
                               })(mes.timeSent))) ]);
                           })(), Html.divS([ Css.whiteSpace("pre-wrap"), Css.position("relative"), Css.overflowX("auto"), Css.marginTop("3px") ])([  ])([ Html.text((function () {
                               if (mes.deleted) {
@@ -11083,14 +11090,14 @@ var PS = {};
               };
               return Platform.batch(Data_Array.reverse(Data_Array.snoc(Data_Functor.mapFlipped(Data_Functor.functorArray)(v.value1)(createMessage(true)(Css.background(Design.vars.lighterBackground22))))(createMessage(false)(Css.background(Design.vars.background))(v.value0))));
           });
-          var $243 = Data_Array.fromFoldable(Data_List_Types.foldableNonEmptyList);
-          return function ($244) {
+          var $247 = Data_Array.fromFoldable(Data_List_Types.foldableNonEmptyList);
+          return function ($248) {
               return (function (messagesHtml) {
                   return Html.divS([ Css.borderJ([ Design.vars.borderWidth1, "solid" ]), Css.overflow("auto"), Css.display("flex"), Css.flexDirection("column-reverse"), Css.width(Css_Functions.calc(Css_Functions.sub("100%")(Design.vars.borderWidth1))) ])([  ])(messagesHtml);
-              })($242($243($244)));
+              })($246($247($248)));
           };
       })();
-      var messageInput = Html.divS([ Css.display("flex"), Css.width(Css_Functions.calc(Css_Functions.add("100%")(Design.vars.borderWidth1))) ])([  ])([ Html.textareaS([ Css.height(Css.px(InputBox.height(model.inputBox))), Css.flex("1"), Css.borderJ([ Css.px(Design.inputBoxBorderWidth), "solid", Design.vars.color ]), Css.padding(".45em"), Design.inputStyles, Css.borderTop("none") ])([ Attribute.id(inputId), Attribute.value(InputBox.content(model.inputBox)), inputWithHeight, detectInputEvents ])([  ]), Html.button([ Attribute.onClick(Producer.producea($dollar_EqMsg_70))(SendMessage.value) ])([ Html.text("Send") ]) ]);
+      var messageInput = Html.divS([ Css.display("flex"), Css.width(Css_Functions.calc(Css_Functions.add("100%")(Design.vars.borderWidth1))) ])([  ])([ Html.textareaS([ Css.height(Css.px(InputBox.height(model.inputBox))), Css.flex("1"), Css.borderJ([ Css.px(Design.inputBoxBorderWidth), "solid", Design.vars.color ]), Css.padding(".45em"), Design.inputStyles, Css.borderTop("none") ])([ Attribute.id(inputId), Attribute.value(InputBox.content(model.inputBox)), inputWithHeight, detectInputEvents ])([  ]), Html.button([ Attribute.onClick(Producer.producea($dollar_EqMsg_71))(SendMessage.value) ])([ Html.text("Send") ]) ]);
       return Html.divS([ Design.panel, Css.transform(Css_Functions.translateX(Css_Functions.calc(Css_Functions.sub("0px")(Design.vars.borderWidth1)))) ])([  ])([ Data_Maybe.maybe(Data_Monoid.mempty(Data_Batched["$_MonoidBatched_7"]))(messageList)(mthread), messageInput ]);
   };
   var view = function (model) {
