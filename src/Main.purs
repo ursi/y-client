@@ -173,9 +173,10 @@ update model@{ userId, convoId } =
 
     SelectSibling mid -> do
       focusInput
+      model2 <- pushReadEvent model mid
 
       pure
-        (model
+        (model2
            { messageParent = Just mid
            , thread = TreeMap.findLeaf mid model.events.folded.messages
            }
