@@ -713,10 +713,29 @@ threadBar model =
         []
       $ leaves
       <#> \mid ->
-            TreeMap.lookup mid model.events.folded.messages
+            let { messages, read } = model.events.folded in
+            TreeMap.lookup mid messages
             # case _ of
-                Just { value: { authorId, content, deleted } } ->
-                  if deleted then
+                Just { value: { authorId, content, deleted, timeSent } } ->
+                  let
+                    isChosen :: Boolean
+                    isChosen =
+                      case TreeMap.siblings mid messages of
+                        Right [] -> true
+                        Right siblings ->
+                          timeSent
+                          <= foldl
+                               (\oldest m ->
+                                  min oldest m.timeSent
+                               )
+                               timeSent
+                               siblings
+                        Left _ -> false
+
+                    isRead :: Boolean
+                    isRead = Set.member (model.userId /\ mid) read
+                  in
+                  if (not isChosen && isRead && model.thread /= Just mid) || deleted then
                     mempty
                   else
                     H.divS
@@ -731,12 +750,7 @@ threadBar model =
                       ]
                       [ onNotSelectingClick $ SelectThreadRoot mid ]
                       [ H.spanS
-                          [ if
-                              authorId == model.userId
-                              || Set.member
-                                   (model.userId /\ mid)
-                                   model.events.folded.read
-                            then
+                          [ if authorId == model.userId || isRead then
                               mempty
                             else
                               C.color "red"
