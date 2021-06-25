@@ -754,7 +754,7 @@ threadBar model =
                           [ if authorId == model.userId || isRead then
                               mempty
                             else
-                              C.color "red"
+                              C.color "#ff4040"
                           ]
                           []
                           [ H.text content ]
