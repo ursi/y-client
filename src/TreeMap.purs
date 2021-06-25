@@ -15,6 +15,7 @@ module TreeMap
   , member
   , removeLeaf
   , removeLeafRecursive
+  , siblings
   , toTreeMap
   )
   where

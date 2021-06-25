@@ -12,6 +12,7 @@ import Data.List ((:))
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
+import Data.Set (Set)
 import Data.Set as Set
 import Data.String.Utils (startsWith)
 import Data.String.CodePoints as String
@@ -79,6 +80,7 @@ type Events =
 type FoldedEvents =
   { names :: Map (Id "User") String
   , messages :: MessageTree
+  , read :: Set (Id "User" /\ Id "Message")
   }
 
 type MessageTree = TreeMap (Id "Message") Message
@@ -112,8 +114,9 @@ init _ = do
     , events:
         { raw: []
         , folded:
-            { messages: TreeMap.empty
-            , names: Map.empty
+            { names: Map.empty
+            , messages: TreeMap.empty
+            , read: Set.empty
             }
         }
     , inputBox: InputBox.default
@@ -170,9 +173,10 @@ update model@{ userId, convoId } =
 
     SelectSibling mid -> do
       focusInput
+      model2 <- pushReadEvent model mid
 
       pure
-        (model
+        (model2
            { messageParent = Just mid
            , thread = TreeMap.findLeaf mid model.events.folded.messages
            }
@@ -208,9 +212,10 @@ update model@{ userId, convoId } =
 
     SelectThreadRoot mid -> do
       focusInput
+      model2 <- pushReadEvent model mid
 
       pure
-        (model
+        (model2
            { thread = Just mid
            , messageParent = Just mid
            }
@@ -392,12 +397,17 @@ update model@{ userId, convoId } =
               # List.head
               <#> _.message
 
+          model3 <-
+            case newThread of
+              Just messageId -> pushReadEvent model2 messageId
+              Nothing -> pure model2
+
           case firstMessage of
             Just mes ->
               if mes.authorId == userId then
                 (do
                    mid <- model.messageParent
-                   { parent } <- TreeMap.lookup mid model2.events.folded.messages
+                   { parent } <- TreeMap.lookup mid model3.events.folded.messages
 
                    Just
                      case parent of
@@ -408,12 +418,12 @@ update model@{ userId, convoId } =
               else
                 liftEffect
                 $ sendNotification
-                    (getName mes.authorId model2.events.folded.names)
+                    (getName mes.authorId model3.events.folded.names)
                     mes.content
 
             Nothing -> pure unit
 
-          pure model2
+          pure model3
 
         Nothing -> pure model
 
@@ -422,6 +432,27 @@ update model@{ userId, convoId } =
         Ws.transmit (ToServer_Subscribe { userId, convoId }) model.wsClient
         Ws.transmit (ToServer_Pull { convoId }) model.wsClient
       pure model
+
+pushReadEvent :: Model -> Id "Message" -> Update Msg Model
+pushReadEvent model@{ convoId, userId, events } mid =
+  if Set.member (userId /\ mid) events.folded.read then
+    pure model
+  else do
+    liftEffect
+      (pushEvent model
+         \_ ->
+           EventPayload_SetReadState
+             { convoId
+             , userId
+             , messageId: mid
+             , readState: true
+             }
+      )
+
+    pure
+      (model
+         { events { folded { read = Set.insert (userId /\ mid) events.folded.read } } }
+      )
 
 pushEvent :: ∀ a r.
   { convoId :: Id "Convo"
@@ -509,6 +540,16 @@ foldEvents =
                       \vpc -> vpc { value = vpc.value { content = content } }
                )
            ~$ events.messageEdit
+       , read:
+           foldl
+             (\acc { userId, messageId, readState } ->
+                if readState then
+                  Set.insert (userId /\ messageId) acc
+                else
+                  acc
+             )
+             Set.empty
+             events.setReadState
        }
 
 splitEvents ::
@@ -537,6 +578,13 @@ splitEvents ::
            , userId :: Id "User"
            , messageId :: Id "Message"
            }
+     , setReadState ::
+         List
+           { convoId :: Id "Convo"
+           , userId :: Id "User"
+           , messageId :: Id "Message"
+           , readState :: Boolean
+           }
      }
 splitEvents =
   foldr
@@ -554,7 +602,8 @@ splitEvents =
          EventPayload_MessageDelete data' ->
            acc { messageDelete = data' : acc.messageDelete }
 
-         _ -> acc
+         EventPayload_SetReadState data' ->
+           acc { setReadState = data' : acc.setReadState }
     )
     mempty
 
@@ -665,10 +714,29 @@ threadBar model =
         []
       $ leaves
       <#> \mid ->
-            TreeMap.lookup mid model.events.folded.messages
+            let { messages, read } = model.events.folded in
+            TreeMap.lookup mid messages
             # case _ of
-                Just { value: { content, deleted } } ->
-                  if deleted then
+                Just { value: { authorId, content, deleted, timeSent } } ->
+                  let
+                    isChosen :: Boolean
+                    isChosen =
+                      case TreeMap.siblings mid messages of
+                        Right [] -> true
+                        Right siblings ->
+                          timeSent
+                          <= foldl
+                               (\oldest m ->
+                                  min oldest m.timeSent
+                               )
+                               timeSent
+                               siblings
+                        Left _ -> false
+
+                    isRead :: Boolean
+                    isRead = Set.member (model.userId /\ mid) read
+                  in
+                  if (not isChosen && isRead && model.thread /= Just mid) || deleted then
                     mempty
                   else
                     H.divS
@@ -682,7 +750,15 @@ threadBar model =
                       , C.overflow "auto"
                       ]
                       [ onNotSelectingClick $ SelectThreadRoot mid ]
-                      [ H.text content ]
+                      [ H.spanS
+                          [ if authorId == model.userId || isRead then
+                              mempty
+                            else
+                              C.color "#ff4040"
+                          ]
+                          []
+                          [ H.text content ]
+                      ]
 
                 Nothing -> mempty
     ]

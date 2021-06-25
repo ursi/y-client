@@ -3,6 +3,5 @@
 - message searching
 - make links clickable
 - make clicking on a notification go to its thread
-- hide 1-off leaves so they don't clutter the thread bar but still allow replies to old message to be discoverable
 - message links
 - add sound to notification
