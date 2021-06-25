@@ -131,7 +131,7 @@ data Msg
   | TransmissionReceived (Maybe ToClient)
   | UpdateInputBox String Number
   | SendMessage
-  | SelectThreadRoot (Id "Message")
+  | SelectThread (Id "Message")
   | NewThread
   | SelectMessageParent (Id "Message")
   | UpdateNameInput String
@@ -146,7 +146,7 @@ instance Eq Msg where
       UpdateInputBox s1 h1, UpdateInputBox s2 h2 -> s1 == s2 && h1 == h2
       SendMessage, SendMessage -> true
       WebSocketOpened, WebSocketOpened -> true
-      SelectThreadRoot m1, SelectThreadRoot m2 -> m1 == m2
+      SelectThread m1, SelectThread m2 -> m1 == m2
       NewThread, NewThread -> true
       SelectMessageParent m1, SelectMessageParent m2 -> m1 == m2
       UpdateNameInput s1, UpdateNameInput s2 -> s1 == s2
@@ -210,7 +210,7 @@ update model@{ userId, convoId } =
            }
         )
 
-    SelectThreadRoot mid -> do
+    SelectThread mid -> do
       focusInput
       model2 <- pushReadEvent model mid
 
@@ -749,7 +749,7 @@ threadBar model =
                       , C.whiteSpace "pre-wrap"
                       , C.overflow "auto"
                       ]
-                      [ onNotSelectingClick $ SelectThreadRoot mid ]
+                      [ onNotSelectingClick $ SelectThread mid ]
                       [ H.spanS
                           [ if authorId == model.userId || isRead then
                               mempty
