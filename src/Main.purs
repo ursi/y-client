@@ -735,7 +735,8 @@ threadBar model =
                         Left _ -> false
 
                     isRead :: Boolean
-                    isRead = Set.member (model.userId /\ mid) read
+                    isRead =
+                      authorId == model.userId || Set.member (model.userId /\ mid) read
                   in
                   if (not isChosen && isRead && model.thread /= Just mid) || deleted then
                     mempty
