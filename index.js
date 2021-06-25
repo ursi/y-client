@@ -10209,7 +10209,7 @@ var PS = {};
                   setName: acc.setName
               };
           };
-          throw new Error("Failed pattern match at Main (line 590, column 8 - line 604, column 59): " + [ v.payload.constructor.name ]);
+          throw new Error("Failed pattern match at Main (line 594, column 8 - line 608, column 59): " + [ v.payload.constructor.name ]);
       };
   })(Data_Monoid.mempty(Data_Monoid.monoidRecord()(Data_Monoid.monoidRecordCons(new Data_Symbol.IsSymbol(function () {
       return "messageDelete";
@@ -10301,7 +10301,7 @@ var PS = {};
               if (v instanceof Data_Maybe.Nothing) {
                   return Control_Applicative.pure(Effect.applicativeEffect)(Data_Maybe.Nothing.value);
               };
-              throw new Error("Failed pattern match at Main (line 946, column 6 - line 958, column 31): " + [ v.constructor.name ]);
+              throw new Error("Failed pattern match at Main (line 951, column 6 - line 963, column 31): " + [ v.constructor.name ]);
           })($230($231($232)));
       };
   })());
@@ -10368,7 +10368,7 @@ var PS = {};
                           if (v1 instanceof Data_Maybe.Nothing) {
                               return Data_Maybe.Nothing.value;
                           };
-                          throw new Error("Failed pattern match at Main (line 635, column 13 - line 647, column 38): " + [ v1.constructor.name ]);
+                          throw new Error("Failed pattern match at Main (line 639, column 13 - line 651, column 38): " + [ v1.constructor.name ]);
                       };
                   };
                   return Control_Applicative.pure(Effect.applicativeEffect)(Data_Maybe.Nothing.value);
@@ -10376,7 +10376,7 @@ var PS = {};
               if (v instanceof Data_Maybe.Nothing) {
                   return Control_Applicative.pure(Effect.applicativeEffect)(Data_Maybe.Nothing.value);
               };
-              throw new Error("Failed pattern match at Main (line 629, column 6 - line 651, column 30): " + [ v.constructor.name ]);
+              throw new Error("Failed pattern match at Main (line 633, column 6 - line 655, column 30): " + [ v.constructor.name ]);
           })($233($234));
       };
   })();
@@ -10526,7 +10526,7 @@ var PS = {};
               if (v instanceof Data_Maybe.Nothing) {
                   return Control_Applicative.pure(Effect.applicativeEffect)(Data_Maybe.Nothing.value);
               };
-              throw new Error("Failed pattern match at Main (line 964, column 6 - line 975, column 31): " + [ v.constructor.name ]);
+              throw new Error("Failed pattern match at Main (line 969, column 6 - line 980, column 31): " + [ v.constructor.name ]);
           })($238($239));
       };
   })());
@@ -10865,7 +10865,7 @@ var PS = {};
                               if (v.messageParent instanceof Data_Maybe.Nothing) {
                                   return Data_Maybe.Nothing.value;
                               };
-                              throw new Error("Failed pattern match at Main (line 375, column 21 - line 386, column 41): " + [ v.messageParent.constructor.name ]);
+                              throw new Error("Failed pattern match at Main (line 379, column 21 - line 390, column 41): " + [ v.messageParent.constructor.name ]);
                           })(),
                           thread: newThread,
                           unread: (function () {
@@ -10891,7 +10891,7 @@ var PS = {};
                           if (newThread instanceof Data_Maybe.Nothing) {
                               return Control_Applicative.pure(Control_Monad_Writer_Trans.applicativeWriterT(Platform["$_MonoidCmd_10"])(Effect.applicativeEffect))(model2);
                           };
-                          throw new Error("Failed pattern match at Main (line 399, column 13 - line 401, column 37): " + [ newThread.constructor.name ]);
+                          throw new Error("Failed pattern match at Main (line 403, column 13 - line 405, column 37): " + [ newThread.constructor.name ]);
                       })())(function (model3) {
                           return Control_Bind.discard(Control_Bind.discardUnit)(Control_Monad_Writer_Trans.bindWriterT(Platform["$_SemigroupCmd_9"])(Effect.bindEffect))((function () {
                               if (firstMessage instanceof Data_Maybe.Just) {
@@ -10906,7 +10906,7 @@ var PS = {};
                                                   if (v3.parent instanceof Data_Maybe.Nothing) {
                                                       return focusInput;
                                                   };
-                                                  throw new Error("Failed pattern match at Main (line 411, column 22 - line 413, column 45): " + [ v3.parent.constructor.name ]);
+                                                  throw new Error("Failed pattern match at Main (line 415, column 22 - line 417, column 45): " + [ v3.parent.constructor.name ]);
                                               })());
                                           });
                                       }));
@@ -10916,7 +10916,7 @@ var PS = {};
                               if (firstMessage instanceof Data_Maybe.Nothing) {
                                   return Control_Applicative.pure(Control_Monad_Writer_Trans.applicativeWriterT(Platform["$_MonoidCmd_10"])(Effect.applicativeEffect))(Data_Unit.unit);
                               };
-                              throw new Error("Failed pattern match at Main (line 403, column 11 - line 422, column 33): " + [ firstMessage.constructor.name ]);
+                              throw new Error("Failed pattern match at Main (line 407, column 11 - line 426, column 33): " + [ firstMessage.constructor.name ]);
                           })())(function () {
                               return Control_Applicative.pure(Control_Monad_Writer_Trans.applicativeWriterT(Platform["$_MonoidCmd_10"])(Effect.applicativeEffect))(model3);
                           });
@@ -10926,7 +10926,7 @@ var PS = {};
               if (v2.value0 instanceof Data_Maybe.Nothing) {
                   return Control_Applicative.pure(Control_Monad_Writer_Trans.applicativeWriterT(Platform["$_MonoidCmd_10"])(Effect.applicativeEffect))(v);
               };
-              throw new Error("Failed pattern match at Main (line 344, column 7 - line 426, column 30): " + [ v2.value0.constructor.name ]);
+              throw new Error("Failed pattern match at Main (line 344, column 7 - line 430, column 30): " + [ v2.value0.constructor.name ]);
           };
           if (v2 instanceof WebSocketOpened) {
               return Control_Bind.discard(Control_Bind.discardUnit)(Control_Monad_Writer_Trans.bindWriterT(Platform["$_SemigroupCmd_9"])(Effect.bindEffect))(Effect_Class.liftEffect(Control_Monad_Writer_Trans.monadEffectWriter(Platform["$_MonoidCmd_10"])(Effect_Class.monadEffectEffect))(function __do() {
@@ -10941,7 +10941,7 @@ var PS = {};
                   return Control_Applicative.pure(Control_Monad_Writer_Trans.applicativeWriterT(Platform["$_MonoidCmd_10"])(Effect.applicativeEffect))(v);
               });
           };
-          throw new Error("Failed pattern match at Main (line 168, column 3 - line 432, column 17): " + [ v2.constructor.name ]);
+          throw new Error("Failed pattern match at Main (line 168, column 3 - line 436, column 17): " + [ v2.constructor.name ]);
       };
   };
   var $dollar_EqMsg_71 = new Data_Eq.Eq(function (v) {
@@ -11001,7 +11001,7 @@ var PS = {};
       return Platform.batch([ Html.divS([ Css.margin("5px") ])([  ])([ Html.button([ Attribute.onClick(Producer.producea($dollar_EqMsg_71))(NewThread.value) ])([ Html.text("New Thread") ]) ]), Html.divS([ Css.overflow("auto"), Css.borderJ([ Design.vars.borderWidth1, "solid" ]) ])([  ])(Data_Functor.mapFlipped(Data_Functor.functorArray)(leaves)(function (mid) {
           return (function (v) {
               if (v instanceof Data_Maybe.Just) {
-                  var isRead = Data_Set.member(Data_Tuple.ordTuple(Y_Shared_Id.ordId)(Y_Shared_Id.ordId))(new Data_Tuple.Tuple(model.userId, mid))(model.events.folded.read);
+                  var isRead = Data_Eq.eq(Y_Shared_Id.eqId)(v.value0.value.authorId)(model.userId) || Data_Set.member(Data_Tuple.ordTuple(Y_Shared_Id.ordId)(Y_Shared_Id.ordId))(new Data_Tuple.Tuple(model.userId, mid))(model.events.folded.read);
                   var isChosen = (function () {
                       var v1 = TreeMap.siblings(Y_Shared_Id.ordId)(mid)(model.events.folded.messages);
                       if (v1 instanceof Data_Either.Right && v1.value0.length === 0) {
@@ -11017,7 +11017,7 @@ var PS = {};
                       if (v1 instanceof Data_Either.Left) {
                           return false;
                       };
-                      throw new Error("Failed pattern match at Main (line 722, column 23 - line 733, column 40): " + [ v1.constructor.name ]);
+                      throw new Error("Failed pattern match at Main (line 726, column 23 - line 737, column 40): " + [ v1.constructor.name ]);
                   })();
                   var $209 = !isChosen && (isRead && Data_Eq.notEq(Data_Maybe.eqMaybe(Y_Shared_Id.eqId))(model.thread)(new Data_Maybe.Just(mid))) || v.value0.value.deleted;
                   if ($209) {
@@ -11040,7 +11040,7 @@ var PS = {};
               if (v instanceof Data_Maybe.Nothing) {
                   return Data_Monoid.mempty(Data_Batched["$_MonoidBatched_7"]);
               };
-              throw new Error("Failed pattern match at Main (line 717, column 15 - line 762, column 34): " + [ v.constructor.name ]);
+              throw new Error("Failed pattern match at Main (line 721, column 15 - line 767, column 34): " + [ v.constructor.name ]);
           })(TreeMap.lookup(Y_Shared_Id.ordId)(mid)(model.events.folded.messages));
       })) ]);
   };
@@ -11073,7 +11073,7 @@ var PS = {};
                                   if (v1 instanceof Data_Maybe.Nothing) {
                                       return Data_Monoid.mempty(Data_Batched["$_MonoidBatched_7"]);
                                   };
-                                  throw new Error("Failed pattern match at Main (line 862, column 33 - line 868, column 52): " + [ v1.constructor.name ]);
+                                  throw new Error("Failed pattern match at Main (line 867, column 33 - line 873, column 52): " + [ v1.constructor.name ]);
                               })(Data_Functor.mapFlipped(Data_Maybe.functorMaybe)(getParent(mes)(model.events.folded.messages))(PointFree.applySecond(function ($249) {
                                   return formatTimeDiff((function (v1) {
                                       return v1.timeSent;
