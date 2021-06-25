@@ -363,6 +363,10 @@ update model@{ userId, convoId } =
               model
                 { events =
                     { raw: newEvents
+
+                    -- this is erasing read messages that were not added by events
+                    -- it's currently not a problem but very tricky to debug
+                    -- so I'm documenting it
                     , folded
                     }
                 , nameInput =
@@ -733,7 +737,8 @@ threadBar model =
                         Left _ -> false
 
                     isRead :: Boolean
-                    isRead = Set.member (model.userId /\ mid) read
+                    isRead =
+                      authorId == model.userId || Set.member (model.userId /\ mid) read
                   in
                   if (not isChosen && isRead && model.thread /= Just mid) || deleted then
                     mempty
