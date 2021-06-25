@@ -15,6 +15,8 @@
                rev = "eb336a95918cba36e45ee6a3ae9519b121eebc3a";
              };
 
+           y = fetchGit { url = y-repo.repo; inherit (y-repo) rev; };
+
            inherit
              (purs
                 { dependencies =
@@ -59,6 +61,15 @@
                    ];
 
                  aliases.watch = "find src | entr -s 'echo bundling; purs-nix bundle'";
+
+                 functions.run-servers =
+                   ''
+                   trap : SIGINT
+                   $(nix-build ${y}/server --no-out-link)/run.sh &
+                   purs-nix bundle
+                   live-server
+                   kill %
+                   '';
                };
          }
       )
