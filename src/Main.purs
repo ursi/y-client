@@ -402,9 +402,9 @@ pushEvent :: ∀ a r.
   { convoId :: Id "Convo"
   , wsClient :: Client ToServer a
   | r
-  }
-  -> (Instant -> EventPayload)
-  -> Effect Unit
+  } ->
+  (Instant -> EventPayload) ->
+  Effect Unit
 pushEvent { convoId, wsClient } payload = do
   eventId :: Id "Event" <- Id.new
   now <- Instant.getNow
@@ -483,7 +483,7 @@ foldEvents =
                   # TreeMap.edit messageId
                       \vpc -> vpc { value = vpc.value { content = content } }
                )
-           ~$ events.messageEdit
+             ~$ events.messageEdit
        , read:
            foldl
              (\acc { userId, messageId, readState } ->
@@ -497,39 +497,39 @@ foldEvents =
        }
 
 splitEvents ::
-  Array Event
-  -> { setName ::
-         List
-           { convoId :: Id "Convo"
-           , userId :: Id "User"
-           , name :: String
-           }
-     , messageSend ::
-         List
-           { convoId :: Id "Convo"
-           , message :: Message
-           }
-     , messageEdit ::
-         List
-           { convoId :: Id "Convo"
-           , messageId :: Id "Message"
-           , authorId :: Id "User"
-           , content :: String
-           }
-     , messageDelete ::
-         List
-           { convoId :: Id "Convo"
-           , userId :: Id "User"
-           , messageId :: Id "Message"
-           }
-     , setReadState ::
-         List
-           { convoId :: Id "Convo"
-           , userId :: Id "User"
-           , messageId :: Id "Message"
-           , readState :: Boolean
-           }
-     }
+  Array Event ->
+  { setName ::
+       List
+         { convoId :: Id "Convo"
+         , userId :: Id "User"
+         , name :: String
+         }
+   , messageSend ::
+       List
+         { convoId :: Id "Convo"
+         , message :: Message
+         }
+   , messageEdit ::
+       List
+         { convoId :: Id "Convo"
+         , messageId :: Id "Message"
+         , authorId :: Id "User"
+         , content :: String
+         }
+   , messageDelete ::
+       List
+         { convoId :: Id "Convo"
+         , userId :: Id "User"
+         , messageId :: Id "Message"
+         }
+   , setReadState ::
+       List
+         { convoId :: Id "Convo"
+         , userId :: Id "User"
+         , messageId :: Id "Message"
+         , readState :: Boolean
+         }
+   }
 splitEvents =
   foldr
     (\(Event event) acc ->
@@ -570,10 +570,10 @@ focusHandler :: HTML.Event -> Effect (Maybe Msg)
 focusHandler _ = pure $ Just Focused
 
 view ::
-  Model
-  -> { head :: Array (Html Msg)
-     , body :: Array (Html Msg)
-     }
+  Model ->
+  { head :: Array (Html Msg)
+  , body :: Array (Html Msg)
+  }
 view model =
   { head: [ H.title $ "⅄" <> if model.unread then " (unread messages)" else "" ]
   , body:
@@ -615,9 +615,9 @@ threadBar model =
       TreeMap.leaves model.events.folded.messages
       # Array.sortBy
           (\a b ->
-            compare
-              ((snd b).value).timeSent
-              ((snd a).value).timeSent
+             compare
+               ((snd b).value).timeSent
+               ((snd a).value).timeSent
           )
       <#> fst
   in
@@ -630,56 +630,56 @@ threadBar model =
         ]
         []
       $ leaves
-      <#> \mid ->
-            let { messages, read } = model.events.folded in
-            TreeMap.lookup mid messages
-            # case _ of
-                Just { value: { authorId, content, deleted, timeSent } } ->
-                  let
-                    isChosen :: Boolean
-                    isChosen =
-                      case TreeMap.siblings mid messages of
-                        Right [] -> true
-                        Right siblings ->
-                          (true /\ timeSent)
-                          <= foldl
-                               (\(chosen /\ oldest) m ->
-                                  min chosen (TreeMap.isLeaf m.id messages)
-                                  /\ min oldest m.timeSent
-                               )
-                               (true /\ timeSent)
-                               siblings
-                        Left _ -> false
+        <#> \mid ->
+              let { messages, read } = model.events.folded in
+              TreeMap.lookup mid messages
+              # case _ of
+                  Just { value: { authorId, content, deleted, timeSent } } ->
+                    let
+                      isChosen :: Boolean
+                      isChosen =
+                        case TreeMap.siblings mid messages of
+                          Right [] -> true
+                          Right siblings ->
+                            (true /\ timeSent)
+                            <= foldl
+                                 (\(chosen /\ oldest) m ->
+                                    min chosen (TreeMap.isLeaf m.id messages)
+                                    /\ min oldest m.timeSent
+                                 )
+                                 (true /\ timeSent)
+                                 siblings
+                          Left _ -> false
 
-                    isRead :: Boolean
-                    isRead =
-                      authorId == model.userId || Set.member (model.userId /\ mid) read
-                  in
-                  if (not isChosen && isRead && model.thread /= Just mid) || deleted then
-                    mempty
-                  else
-                    H.divS
-                      [ if model.thread == Just mid then
-                          C.background Ds.vars.accent1
-                        else
-                          mempty
-                      , Ds.following [ C.borderTop "1px solid" ]
-                      , C.padding ".3em"
-                      , C.whiteSpace "pre-wrap"
-                      , C.overflow "auto"
-                      ]
-                      [ onNotSelectingClick $ SelectThread mid ]
-                      [ H.spanS
-                          [ if authorId == model.userId || isRead then
-                              mempty
-                            else
-                              C.color "#ff4040"
-                          ]
-                          []
-                          [ H.text content ]
-                      ]
+                      isRead :: Boolean
+                      isRead =
+                        authorId == model.userId || Set.member (model.userId /\ mid) read
+                    in
+                    if (not isChosen && isRead && model.thread /= Just mid) || deleted then
+                      mempty
+                    else
+                      H.divS
+                        [ if model.thread == Just mid then
+                            C.background Ds.vars.accent1
+                          else
+                            mempty
+                        , Ds.following [ C.borderTop "1px solid" ]
+                        , C.padding ".3em"
+                        , C.whiteSpace "pre-wrap"
+                        , C.overflow "auto"
+                        ]
+                        [ onNotSelectingClick $ SelectThread mid ]
+                        [ H.spanS
+                            [ if authorId == model.userId || isRead then
+                                mempty
+                              else
+                                C.color "#ff4040"
+                            ]
+                            []
+                            [ H.text content ]
+                        ]
 
-                Nothing -> mempty
+                  Nothing -> mempty
     ]
 
 type IsSibling = Boolean
@@ -795,7 +795,7 @@ threadView model =
                      <#> createMessage true (C.background Ds.vars.lighterBackground22)
                     )
                     (createMessage false (C.background Ds.vars.background) message)
-                # Array.reverse
+                  # Array.reverse
              )
         .> \messagesHtml ->
              H.divS

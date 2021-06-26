@@ -24,5 +24,5 @@ helper (RefEq toMsg) (RefEq client) =
      onTransmission
        (msgCallback <. toMsg)
        client
-     pure canceler
 
+     pure canceler
