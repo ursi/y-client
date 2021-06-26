@@ -69,7 +69,7 @@ init _ = do
     liftEffect do
       hostname <- getHostname
       Ws.newConnection { url: "ws://" <> hostname <> ":8081" }
-      -- Ws.newConnection { url: "ws://y.maynards.site:8081" }
+      -- Ws.newConnection { url: "wss://y.maynards.site:8081" }
 
   tell
     (Cmd
