@@ -12,7 +12,6 @@ import Data.List ((:))
 import Data.List as List
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Set (Set)
 import Data.Set as Set
 import Data.String.Utils (startsWith)
 import Data.String.CodePoints as String
@@ -20,19 +19,19 @@ import Debug as Debug
 import Design as Ds
 import Html (Html)
 import Html as H
-import InputBox (InputBox)
+import Input (focusInput, hitEnter)
+import Input as Input
+import ModelMsg (FoldedEvents, InputAction(..), Leaf, MessageTree, Model, Msg(..))
 import InputBox as InputBox
-import Platform (Cmd(..), Program, Update, afterRender, batch, tell)
+import Platform (Cmd(..), Program, Update, batch, tell)
 import Platform as Platform
 import Producer as P
-import RefEq (RefEq(..))
 import Sub (Sub)
 import Sub as Sub
-import TreeMap (IVP, Thread, TreeMap, toTreeMap)
+import TreeMap (IVP, Thread, toTreeMap)
 import TreeMap as TreeMap
 import WebSocketSub (wsToSub)
 import WHATWG.HTML.All as HTML
-import WHATWG.HTML.HTMLTextAreaElement as TextArea
 import Y.Client.WebSocket (Client)
 import Y.Client.WebSocket as Ws
 import Y.Shared.Event (Event(..), EventPayload(..))
@@ -57,33 +56,6 @@ main = do
     , view
     , subscriptions
     }
-
-type Model =
-  { convoId :: Id "Convo"
-  , userId :: Id "User"
-  , wsClient :: Client ToServer ToClient
-  , events :: Events
-  , inputBox :: InputBox
-  , thread :: Maybe Leaf
-  , messageParent :: Maybe (Id "Message")
-  , nameInput :: String
-  , unread :: Boolean
-  }
-
-type Leaf = (Id "Message")
-
-type Events =
-  { raw :: Array Event
-  , folded :: FoldedEvents
-  }
-
-type FoldedEvents =
-  { names :: Map (Id "User") String
-  , messages :: MessageTree
-  , read :: Set (Id "User" /\ Id "Message")
-  }
-
-type MessageTree = TreeMap (Id "Message") Message
 
 init :: Unit -> Update Msg Model
 init _ = do
@@ -124,316 +96,284 @@ init _ = do
     , unread: false
     }
 
-data Msg
-  = WebSocketOpened
-  | TransmissionReceived (Maybe ToClient)
-  | UpdateInputBox String Number
-  | SendMessage
-  | SelectThread (Id "Message")
-  | NewThread
-  | SelectMessageParent (Id "Message")
-  | UpdateNameInput String
-  | UpdateName
-  | SelectSibling (Id "Message")
-  | Undo
-  | Focused
-
-instance Eq Msg where
-  eq =
-    case _, _ of
-      UpdateInputBox s1 h1, UpdateInputBox s2 h2 -> s1 == s2 && h1 == h2
-      SendMessage, SendMessage -> true
-      WebSocketOpened, WebSocketOpened -> true
-      SelectThread m1, SelectThread m2 -> m1 == m2
-      NewThread, NewThread -> true
-      SelectMessageParent m1, SelectMessageParent m2 -> m1 == m2
-      UpdateNameInput s1, UpdateNameInput s2 -> s1 == s2
-      UpdateName, UpdateName -> true
-      SelectSibling m1, SelectSibling m2 -> m1 == m2
-      Focused, Focused -> true
-      Undo, Undo -> true
-      _, _ -> false
-
 update :: Model -> Msg -> Update Msg Model
-update model@{ userId, convoId } =
-  let
-    _ = Debug.log model
+update =
+  Input.infuse
+    (_ { inputBox = _ })
+    _.inputBox
+    \model@{ userId, convoId } ->
+      let _ = Debug.log model in
+      case _ of
+        Undo -> pure $ model { inputBox = InputBox.undo model.inputBox }
+        Focused -> pure $ model { unread = false }
 
-    focusInput =
-      afterRender
-      $ HTML.document'
-        >>= HTML.getElementById inputId .> map HTML.toMaybeHTMLElement
-        >>= maybe (pure unit) (HTML.focus {})
-  in
-  case _ of
-    Undo -> pure $ model { inputBox = InputBox.undo model.inputBox }
-    Focused -> pure $ model { unread = false }
+        SelectSibling mid -> do
+          focusInput
+          model2 <- pushReadEvent model mid
 
-    SelectSibling mid -> do
-      focusInput
-      model2 <- pushReadEvent model mid
+          pure
+            (model2
+               { messageParent = Just mid
+               , thread = TreeMap.findLeaf mid model.events.folded.messages
+               }
+            )
 
-      pure
-        (model2
-           { messageParent = Just mid
-           , thread = TreeMap.findLeaf mid model.events.folded.messages
-           }
-        )
+        UpdateName -> do
+          liftEffect do
+            pushEvent model
+              \_ ->
+                EventPayload_SetName
+                  { convoId
+                  , userId
+                  , name: model.nameInput
+                  }
 
-    UpdateName -> do
-      liftEffect do
-        pushEvent model
-          \_ ->
-            EventPayload_SetName
-              { convoId
-              , userId
-              , name: model.nameInput
-              }
+          pure model
 
-      pure model
+        UpdateNameInput str -> pure $ model { nameInput = str }
 
-    UpdateNameInput str -> pure $ model { nameInput = str }
+        SelectMessageParent mid -> do
+          focusInput
+          pure $ model { messageParent = Just mid }
 
-    SelectMessageParent mid -> do
-      focusInput
-      pure $ model { messageParent = Just mid }
+        NewThread -> do
+          focusInput
 
-    NewThread -> do
-      focusInput
+          pure
+            (model
+               { thread = Nothing
+               , messageParent = Nothing
+               }
+            )
 
-      pure
-        (model
-           { thread = Nothing
-           , messageParent = Nothing
-           }
-        )
+        SelectThread mid -> do
+          focusInput
+          model2 <- pushReadEvent model mid
 
-    SelectThread mid -> do
-      focusInput
-      model2 <- pushReadEvent model mid
+          pure
+            (model2
+               { thread = Just mid
+               , messageParent = Just mid
+               }
+            )
 
-      pure
-        (model2
-           { thread = Just mid
-           , messageParent = Just mid
-           }
-        )
-
-    SendMessage -> do
-      focusInput
-
-      let
-        content = InputBox.content model.inputBox
-
-        errorMsg =
-          model
-            { inputBox =
-                InputBox.setContent
-                  "You didn't send that message!"
-                  model.inputBox
-            }
-
-      if content == "" then
-        pure model
-      else if content == "/delete" then
-        (do
-           mid <- model.messageParent
-           { value: mes } <- TreeMap.lookup mid model.events.folded.messages
-
-           Just
-             (if mes.authorId == userId then do
-                liftEffect
-                  (pushEvent model
-                     \_ ->
-                       EventPayload_MessageDelete
-                         { convoId
-                         , userId
-                         , messageId: mes.id
-                         }
-                  )
-
-                pure (model { inputBox = InputBox.default })
-              else
-                pure errorMsg
-             )
-        )
-        # fromMaybe (pure model)
-      else if startsWith "/edit " content then
-        (do
-           mid <- model.messageParent
-           { value: mes } <- TreeMap.lookup mid model.events.folded.messages
-
-           Just
-             (if mes.authorId == userId then do
-                liftEffect
-                  (pushEvent model
-                     \_ ->
-                       EventPayload_MessageEdit
-                         { convoId
-                         , messageId: mes.id
-                         , authorId: userId
-                         , content: String.drop 6 content
-                         }
-                  )
-
-                pure (model { inputBox = InputBox.reset model.inputBox })
-              else
-                pure errorMsg
-             )
-        )
-        # fromMaybe (pure model)
-      else do
-        id :: Id "Message" <- liftEffect Id.new
-
-        liftEffect do
-          pushEvent model
-            \instant ->
-              EventPayload_MessageSend
-                { convoId
-                , message:
-                    { id
-                    , timeSent: instant
-                    , authorId: model.userId
-                    , convoId
-                    , deleted: false
-                    , depIds:
-                        model.messageParent
-                        <#> Set.singleton
-                        # fromMaybe mempty
-                    , content: InputBox.content model.inputBox
-                    }
-                }
-
-        pure
-          (model
-             { inputBox = InputBox.reset model.inputBox
-             , messageParent = Just id
-             , thread =
-                 case model.thread of
-                   Nothing -> Just id
-                   _ -> model.thread
-             }
-          )
-
-    UpdateInputBox content height ->
-      let
-        model2 = model { inputBox = InputBox.update content height model.inputBox }
-      in
-      if content == "/edit " && InputBox.prevContent model2.inputBox == "/edit" then
-        pure
-        $ (do
-             mid <- model2.messageParent
-             { value: mes } <- TreeMap.lookup mid model2.events.folded.messages
-             Just
-               if mes.deleted then
-                 model2
-               else
-                 model2
-                   { inputBox =
-                       InputBox.update
-                         ("/edit " <> mes.content)
-                         height
-                         model.inputBox
-                   }
-          )
-          # fromMaybe model2
-      else
-        pure model2
-
-    TransmissionReceived mtc ->
-      case mtc of
-        Just (ToClient_Broadcast events) -> do
-          focused <- liftEffect hasFocus
+        SendMessage -> do
+          focusInput
 
           let
-            newEvents :: Array Event
-            newEvents = addEvents model.events.raw events
+            content = InputBox.content model.inputBox
 
-            folded :: FoldedEvents
-            folded = foldEvents newEvents
-
-            newLeaf :: Id "Message" -> Maybe (Id "Message")
-            newLeaf =
-              TreeMap.findNewLeaf ~$ model.events.folded.messages ~$ folded.messages
-
-            newThread :: Maybe Leaf
-            newThread = newLeaf =<< model.thread
-
-            model2 =
+            errorMsg =
               model
-                { events =
-                    { raw: newEvents
-
-                    -- this is erasing read messages that were not added by events
-                    -- it's currently not a problem but very tricky to debug
-                    -- so I'm documenting it
-                    , folded
-                    }
-                , nameInput =
-                    if model.nameInput == "" then
-                      Map.lookup userId folded.names
-                      # fromMaybe ""
-                    else
-                      model.nameInput
-                , messageParent =
-                    case model.messageParent of
-                      Just mid ->
-                        if
-                          InputBox.content model.inputBox == ""
-                          && TreeMap.isLeaf mid model.events.folded.messages
-                        then
-                          newThread
-                        else
-                          case model.messageParent <#> TreeMap.member ~$ folded.messages of
-                            Just false -> newLeaf =<< model.messageParent
-                            _ -> model.messageParent
-                      Nothing -> Nothing
-                , thread = newThread
-                , unread = if focused then false else true
+                { inputBox =
+                    InputBox.setContent
+                      "You didn't send that message!"
+                      model.inputBox
                 }
 
-            firstMessage :: Maybe Message
-            firstMessage =
-              splitEvents events
-              # _.messageSend
-              # List.head
-              <#> _.message
+          if content == "" then
+            pure model
+          else if content == "/delete" then
+            (do
+               mid <- model.messageParent
+               { value: mes } <- TreeMap.lookup mid model.events.folded.messages
 
-          model3 <-
-            case newThread of
-              Just messageId -> pushReadEvent model2 messageId
-              Nothing -> pure model2
+               Just
+                 (if mes.authorId == userId then do
+                    liftEffect
+                      (pushEvent model
+                         \_ ->
+                           EventPayload_MessageDelete
+                             { convoId
+                             , userId
+                             , messageId: mes.id
+                             }
+                      )
 
-          case firstMessage of
-            Just mes ->
-              if mes.authorId == userId then
-                (do
-                   mid <- model.messageParent
-                   { parent } <- TreeMap.lookup mid model3.events.folded.messages
+                    pure (model { inputBox = InputBox.default })
+                  else
+                    pure errorMsg
+                 )
+            )
+            # fromMaybe (pure model)
+          else if startsWith "/edit " content then
+            (do
+               mid <- model.messageParent
+               { value: mes } <- TreeMap.lookup mid model.events.folded.messages
 
-                   Just
-                     case parent of
-                       Just _ -> pure unit
-                       Nothing -> focusInput -- new thread has been created
-                )
-                # fromMaybe (pure unit)
-              else
-                liftEffect
-                $ sendNotification
-                    (getName mes.authorId model3.events.folded.names)
-                    mes.content
+               Just
+                 (if mes.authorId == userId then do
+                    liftEffect
+                      (pushEvent model
+                         \_ ->
+                           EventPayload_MessageEdit
+                             { convoId
+                             , messageId: mes.id
+                             , authorId: userId
+                             , content: String.drop 6 content
+                             }
+                      )
 
-            Nothing -> pure unit
+                    pure (model { inputBox = InputBox.reset model.inputBox })
+                  else
+                    pure errorMsg
+                 )
+            )
+            # fromMaybe (pure model)
+          else do
+            id :: Id "Message" <- liftEffect Id.new
 
-          pure model3
+            liftEffect do
+              pushEvent model
+                \instant ->
+                  EventPayload_MessageSend
+                    { convoId
+                    , message:
+                        { id
+                        , timeSent: instant
+                        , authorId: model.userId
+                        , convoId
+                        , deleted: false
+                        , depIds:
+                            model.messageParent
+                            <#> Set.singleton
+                            # fromMaybe mempty
+                        , content: InputBox.content model.inputBox
+                        }
+                    }
 
-        Nothing -> pure model
+            pure
+              (model
+                 { inputBox = InputBox.reset model.inputBox
+                 , messageParent = Just id
+                 , thread =
+                     case model.thread of
+                       Nothing -> Just id
+                       _ -> model.thread
+                 }
+              )
 
-    WebSocketOpened -> do
-      liftEffect do
-        Ws.transmit (ToServer_Subscribe { userId, convoId }) model.wsClient
-        Ws.transmit (ToServer_Pull { convoId }) model.wsClient
-      pure model
+        UpdateInputBox mInputAction height ->
+          let
+            model2 = model { inputBox = InputBox.setHeight height model.inputBox }
+          in
+          case mInputAction of
+            Just a ->
+              case a of
+                Edit ->
+                  pure
+                  $ (do
+                       mid <- model2.messageParent
+                       { value: mes } <- TreeMap.lookup mid model2.events.folded.messages
+                       Just
+                         if mes.deleted then
+                           model2
+                         else
+                           model2
+                             { inputBox =
+                                 InputBox.setContent
+                                   ("/edit " <> mes.content)
+                                   model.inputBox
+                             }
+                    )
+                    # fromMaybe model2
+
+            Nothing -> pure model2
+
+        TransmissionReceived mtc ->
+          case mtc of
+            Just (ToClient_Broadcast events) -> do
+              focused <- liftEffect hasFocus
+
+              let
+                newEvents :: Array Event
+                newEvents = addEvents model.events.raw events
+
+                folded :: FoldedEvents
+                folded = foldEvents newEvents
+
+                newLeaf :: Id "Message" -> Maybe (Id "Message")
+                newLeaf =
+                  TreeMap.findNewLeaf ~$ model.events.folded.messages ~$ folded.messages
+
+                newThread :: Maybe Leaf
+                newThread = newLeaf =<< model.thread
+
+                model2 =
+                  model
+                    { events =
+                        { raw: newEvents
+
+                        -- this is erasing read messages that were not added by events
+                        -- it's currently not a problem but very tricky to debug
+                        -- so I'm documenting it
+                        , folded
+                        }
+                    , nameInput =
+                        if model.nameInput == "" then
+                          Map.lookup userId folded.names
+                          # fromMaybe ""
+                        else
+                          model.nameInput
+                    , messageParent =
+                        case model.messageParent of
+                          Just mid ->
+                            if
+                              InputBox.content model.inputBox == ""
+                              && TreeMap.isLeaf mid model.events.folded.messages
+                            then
+                              newThread
+                            else
+                              case model.messageParent <#> TreeMap.member ~$ folded.messages of
+                                Just false -> newLeaf =<< model.messageParent
+                                _ -> model.messageParent
+                          Nothing -> Nothing
+                    , thread = newThread
+                    , unread = if focused then false else true
+                    }
+
+                firstMessage :: Maybe Message
+                firstMessage =
+                  splitEvents events
+                  # _.messageSend
+                  # List.head
+                  <#> _.message
+
+              model3 <-
+                case newThread of
+                  Just messageId -> pushReadEvent model2 messageId
+                  Nothing -> pure model2
+
+              case firstMessage of
+                Just mes ->
+                  if mes.authorId == userId then
+                    (do
+                       mid <- model.messageParent
+                       { parent } <- TreeMap.lookup mid model3.events.folded.messages
+
+                       Just
+                         case parent of
+                           Just _ -> pure unit
+                           Nothing -> focusInput -- new thread has been created
+                    )
+                    # fromMaybe (pure unit)
+                  else
+                    liftEffect
+                    $ sendNotification
+                        (getName mes.authorId model3.events.folded.names)
+                        mes.content
+
+                Nothing -> pure unit
+
+              pure model3
+
+            Nothing -> pure model
+
+        WebSocketOpened -> do
+          liftEffect do
+            Ws.transmit (ToServer_Subscribe { userId, convoId }) model.wsClient
+            Ws.transmit (ToServer_Pull { convoId }) model.wsClient
+          pure model
 
 pushReadEvent :: Model -> Id "Message" -> Update Msg Model
 pushReadEvent model@{ convoId, userId, events } mid =
@@ -460,9 +400,9 @@ pushEvent :: ∀ a r.
   { convoId :: Id "Convo"
   , wsClient :: Client ToServer a
   | r
-  }
-  -> (Instant -> EventPayload)
-  -> Effect Unit
+  } ->
+  (Instant -> EventPayload) ->
+  Effect Unit
 pushEvent { convoId, wsClient } payload = do
   eventId :: Id "Event" <- Id.new
   now <- Instant.getNow
@@ -541,7 +481,7 @@ foldEvents =
                   # TreeMap.edit messageId
                       \vpc -> vpc { value = vpc.value { content = content } }
                )
-           ~$ events.messageEdit
+             ~$ events.messageEdit
        , read:
            foldl
              (\acc { userId, messageId, readState } ->
@@ -555,39 +495,39 @@ foldEvents =
        }
 
 splitEvents ::
-  Array Event
-  -> { setName ::
-         List
-           { convoId :: Id "Convo"
-           , userId :: Id "User"
-           , name :: String
-           }
-     , messageSend ::
-         List
-           { convoId :: Id "Convo"
-           , message :: Message
-           }
-     , messageEdit ::
-         List
-           { convoId :: Id "Convo"
-           , messageId :: Id "Message"
-           , authorId :: Id "User"
-           , content :: String
-           }
-     , messageDelete ::
-         List
-           { convoId :: Id "Convo"
-           , userId :: Id "User"
-           , messageId :: Id "Message"
-           }
-     , setReadState ::
-         List
-           { convoId :: Id "Convo"
-           , userId :: Id "User"
-           , messageId :: Id "Message"
-           , readState :: Boolean
-           }
-     }
+  Array Event ->
+  { setName ::
+       List
+         { convoId :: Id "Convo"
+         , userId :: Id "User"
+         , name :: String
+         }
+   , messageSend ::
+       List
+         { convoId :: Id "Convo"
+         , message :: Message
+         }
+   , messageEdit ::
+       List
+         { convoId :: Id "Convo"
+         , messageId :: Id "Message"
+         , authorId :: Id "User"
+         , content :: String
+         }
+   , messageDelete ::
+       List
+         { convoId :: Id "Convo"
+         , userId :: Id "User"
+         , messageId :: Id "Message"
+         }
+   , setReadState ::
+       List
+         { convoId :: Id "Convo"
+         , userId :: Id "User"
+         , messageId :: Id "Message"
+         , readState :: Boolean
+         }
+   }
 splitEvents =
   foldr
     (\(Event event) acc ->
@@ -627,38 +567,11 @@ subscriptions model =
 focusHandler :: HTML.Event -> Effect (Maybe Msg)
 focusHandler _ = pure $ Just Focused
 
-hitEnter :: HTML.Event -> Effect (Maybe Msg)
-hitEnter =
-  HTML.toMaybeKeyboardEvent
-  .> case _ of
-      Just kbe ->
-        if HTML.key kbe == "Enter" then do
-          document <- HTML.document'
-          body <- HTML.unsafeBody document
-          bind (HTML.activeElement document)
-            case _ of
-              Just activeElement ->
-                if (RefEq body == RefEq activeElement) then do
-                  bind
-                    (HTML.getElementById inputId document # map HTML.toMaybeHTMLElement)
-                    (maybe (pure unit) (HTML.focus {}))
-
-                  HTML.preventDefault kbe
-                  pure Nothing
-                else
-                  pure Nothing
-
-              Nothing -> pure Nothing
-        else
-          pure Nothing
-
-      Nothing -> pure Nothing
-
 view ::
-  Model
-  -> { head :: Array (Html Msg)
-     , body :: Array (Html Msg)
-     }
+  Model ->
+  { head :: Array (Html Msg)
+  , body :: Array (Html Msg)
+  }
 view model =
   { head: [ H.title $ "⅄" <> if model.unread then " (unread messages)" else "" ]
   , body:
@@ -700,9 +613,9 @@ threadBar model =
       TreeMap.leaves model.events.folded.messages
       # Array.sortBy
           (\a b ->
-            compare
-              ((snd b).value).timeSent
-              ((snd a).value).timeSent
+             compare
+               ((snd b).value).timeSent
+               ((snd a).value).timeSent
           )
       <#> fst
   in
@@ -715,60 +628,57 @@ threadBar model =
         ]
         []
       $ leaves
-      <#> \mid ->
-            let { messages, read } = model.events.folded in
-            TreeMap.lookup mid messages
-            # case _ of
-                Just { value: { authorId, content, deleted, timeSent } } ->
-                  let
-                    isChosen :: Boolean
-                    isChosen =
-                      case TreeMap.siblings mid messages of
-                        Right [] -> true
-                        Right siblings ->
-                          (true /\ timeSent)
-                          <= foldl
-                               (\(chosen /\ oldest) m ->
-                                  min chosen (TreeMap.isLeaf m.id messages)
-                                  /\ min oldest m.timeSent
-                               )
-                               (true /\ timeSent)
-                               siblings
-                        Left _ -> false
+        <#> \mid ->
+              let { messages, read } = model.events.folded in
+              TreeMap.lookup mid messages
+              # case _ of
+                  Just { value: { authorId, content, deleted, timeSent } } ->
+                    let
+                      isChosen :: Boolean
+                      isChosen =
+                        case TreeMap.siblings mid messages of
+                          Right [] -> true
+                          Right siblings ->
+                            (true /\ timeSent)
+                            <= foldl
+                                 (\(chosen /\ oldest) m ->
+                                    min chosen (TreeMap.isLeaf m.id messages)
+                                    /\ min oldest m.timeSent
+                                 )
+                                 (true /\ timeSent)
+                                 siblings
+                          Left _ -> false
 
-                    isRead :: Boolean
-                    isRead =
-                      authorId == model.userId || Set.member (model.userId /\ mid) read
-                  in
-                  if (not isChosen && isRead && model.thread /= Just mid) || deleted then
-                    mempty
-                  else
-                    H.divS
-                      [ if model.thread == Just mid then
-                          C.background Ds.vars.accent1
-                        else
-                          mempty
-                      , Ds.following [ C.borderTop "1px solid" ]
-                      , C.padding ".3em"
-                      , C.whiteSpace "pre-wrap"
-                      , C.overflow "auto"
-                      ]
-                      [ onNotSelectingClick $ SelectThread mid ]
-                      [ H.spanS
-                          [ if authorId == model.userId || isRead then
-                              mempty
-                            else
-                              C.color "#ff4040"
-                          ]
-                          []
-                          [ H.text content ]
-                      ]
+                      isRead :: Boolean
+                      isRead =
+                        authorId == model.userId || Set.member (model.userId /\ mid) read
+                    in
+                    if (not isChosen && isRead && model.thread /= Just mid) || deleted then
+                      mempty
+                    else
+                      H.divS
+                        [ if model.thread == Just mid then
+                            C.background Ds.vars.accent1
+                          else
+                            mempty
+                        , Ds.following [ C.borderTop "1px solid" ]
+                        , C.padding ".3em"
+                        , C.whiteSpace "pre-wrap"
+                        , C.overflow "auto"
+                        ]
+                        [ onNotSelectingClick $ SelectThread mid ]
+                        [ H.spanS
+                            [ if authorId == model.userId || isRead then
+                                mempty
+                              else
+                                C.color "#ff4040"
+                            ]
+                            []
+                            [ H.text content ]
+                        ]
 
-                Nothing -> mempty
+                  Nothing -> mempty
     ]
-
-inputId :: String
-inputId = "input"
 
 type IsSibling = Boolean
 
@@ -799,20 +709,7 @@ threadView model =
           , C.width $ CF.calc $ CF.add "100%" Ds.vars.borderWidth1
           ]
           []
-          [ H.textareaS
-              [ C.height $ C.px $ InputBox.height model.inputBox
-              , C.flex "1"
-              , C.borderJ [ C.px Ds.inputBoxBorderWidth, "solid", Ds.vars.color ]
-              , C.padding ".45em"
-              , Ds.inputStyles
-              , C.borderTop "none"
-              ]
-              [ A.id inputId
-              , A.value $ InputBox.content model.inputBox
-              , inputWithHeight
-              , detectInputEvents
-              ]
-              []
+          [ Input.html model
           , H.button [ A.onClick SendMessage ] [ H.text "Send" ]
           ]
 
@@ -867,7 +764,10 @@ threadView model =
                               # case _ of
                                   Just diff ->
                                     H.spanS [ C.marginLeft "12px" ]
-                                    [ A.title $ dateString $ asMilliseconds mes.timeSent ]
+                                    [ A.title
+                                      $ dateString
+                                      $ asMilliseconds mes.timeSent
+                                    ]
                                     [ H.text diff ]
 
                                   Nothing -> mempty
@@ -893,7 +793,7 @@ threadView model =
                      <#> createMessage true (C.background Ds.vars.lighterBackground22)
                     )
                     (createMessage false (C.background Ds.vars.background) message)
-                # Array.reverse
+                  # Array.reverse
              )
         .> \messagesHtml ->
              H.divS
@@ -941,43 +841,6 @@ formatTimeDiff iOld iNew =
           show' days "d"
         else
         show' (days / 7.0) "w"
-
-
-inputWithHeight :: Attribute Msg
-inputWithHeight =
-  A.on "input"
-  $ HTML.unsafeTarget
-  .> HTML.toMaybeHTMLTextAreaElement
-  .> case _ of
-       Just elem ->
-         lift2
-           (\content height ->
-              Just
-              $ UpdateInputBox
-                  content
-                  (height + Ds.inputBoxBorderWidth)
-           )
-           (TextArea.value elem)
-           (toNumber <$> HTML.scrollHeight elem)
-
-       Nothing -> pure Nothing
-
-detectInputEvents :: Attribute Msg
-detectInputEvents =
-  A.on "keydown"
-  $ HTML.toMaybeKeyboardEvent
-  .> case _ of
-       Just kbe ->
-         if HTML.key kbe == "Enter" && (HTML.ctrlKey kbe || HTML.metaKey kbe) then do
-           HTML.preventDefault kbe
-           pure $ Just SendMessage
-         else if HTML.key kbe == "z" && HTML.ctrlKey kbe then do
-           HTML.preventDefault kbe
-           pure $ Just Undo
-         else
-           pure Nothing
-
-       Nothing -> pure Nothing
 
 foreign import isSelecting :: Effect Boolean
 

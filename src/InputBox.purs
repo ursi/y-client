@@ -6,6 +6,7 @@ module InputBox
   , prevContent
   , reset
   , setContent
+  , setHeight
   , undo
   , update
   )
@@ -60,6 +61,9 @@ setContent newContent (InputBox r) =
   $ r { content = newContent
       , prevContent = r.content
       }
+
+setHeight :: Number -> InputBox -> InputBox
+setHeight newHeight (InputBox r) = InputBox $ r { height = newHeight }
 
 undo :: InputBox -> InputBox
 undo (InputBox r) =
