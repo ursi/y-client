@@ -100,9 +100,7 @@ init _ = do
 
 update :: Model -> Msg -> Update Msg Model
 update =
-  Input.infuse
-    (_ { inputBox = _ })
-    _.inputBox
+  Input.infuseRec (Proxy :: _ "inputBox")
     \model@{ userId, convoId } ->
       let _ = Debug.log model in
       case _ of

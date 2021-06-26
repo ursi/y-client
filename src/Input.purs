@@ -3,6 +3,7 @@ module Input where
 import Attribute (Attribute)
 import Attribute as A
 import Css as C
+import Data.Symbol (class IsSymbol)
 import Design as Ds
 import Effect.Ref (Ref)
 import Effect.Ref as Ref
@@ -12,6 +13,8 @@ import InputBox as IB
 import MasonPrelude
 import ModelMsg (Height, InputAction(..), Model, Msg(..))
 import Platform (afterRender, Update)
+import Prim.Row (class Cons)
+import Record as Record
 import RefEq (RefEq(..))
 import WHATWG.HTML.All as H
 import WHATWG.HTML.All (Event)
@@ -31,6 +34,18 @@ infuse addIb getIb update =
   newModel <- update (addIb model currentInputBox) msg
   liftEffect $ Ref.write (getIb newModel) ref
   pure newModel
+
+infuseRec :: ∀ msg l r r'.
+  IsSymbol l =>
+  Cons l InputBox r' r
+  => Proxy l
+  -> ((Record r) -> msg -> Update msg (Record r))
+  -> ((Record r) -> msg -> Update msg (Record r))
+infuseRec _ =
+  let _l = Proxy :: _ l in
+  infuse
+    (flip $ Record.set _l)
+    (Record.get _l)
 
 id :: String
 id = "input"
