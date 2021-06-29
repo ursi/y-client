@@ -5,28 +5,27 @@ module InputBox
   , height
   , prevContent
   , reset
+  , selectionStart
+  , selectionEnd
   , setContent
+  , setContentAndCursor
   , setHeight
+  , setSelectionRange
+  , setCursor
   , undo
-  , update
   )
   where
 
 import MasonPrelude
+
+import Data.String as String
 
 newtype InputBox =
   InputBox
     { content :: String
     , prevContent :: String
     , height :: Number
-    }
-
-update :: String -> Number -> InputBox -> InputBox
-update newContent height' (InputBox r) =
-  InputBox
-    { content: newContent
-    , prevContent: r.content
-    , height: height'
+    , selectionRange :: Int /\ Int
     }
 
 height :: InputBox -> Number
@@ -44,6 +43,7 @@ default =
     { content: ""
     , prevContent: ""
     , height: defaultHeight
+    , selectionRange: 0 /\ 0
     }
 
 -- | store current content in prevContent
@@ -53,6 +53,7 @@ reset (InputBox r) =
     { content: ""
     , prevContent: r.content
     , height: defaultHeight
+    , selectionRange: 0 /\ 0
     }
 
 setContent :: String -> InputBox -> InputBox
@@ -74,3 +75,20 @@ undo (InputBox r) =
 
 prevContent :: InputBox -> String
 prevContent (InputBox r) = r.prevContent
+
+selectionStart :: InputBox -> Int
+selectionStart (InputBox r) = fst r.selectionRange
+
+selectionEnd :: InputBox -> Int
+selectionEnd (InputBox r) = snd r.selectionRange
+
+setSelectionRange :: Int /\ Int -> InputBox -> InputBox
+setSelectionRange range (InputBox r) = InputBox $ r { selectionRange = range }
+
+setCursor :: Int -> InputBox -> InputBox
+setCursor = setSelectionRange <. join Tuple
+
+setContentAndCursor :: String -> InputBox -> InputBox
+setContentAndCursor str =
+  setContent str
+  .> setCursor (String.length str)

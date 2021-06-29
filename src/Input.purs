@@ -1,8 +1,15 @@
-module Input where
+module Input
+  ( focusInput
+  , hitEnter
+  , html
+  , infuse
+  )
+  where
 
 import Attribute (Attribute)
 import Attribute as A
 import Css as C
+import Data.JSValue (toJSValue)
 import Design as Ds
 import Effect.Ref (Ref)
 import Effect.Ref as Ref
@@ -22,21 +29,50 @@ ref = unsafePerformEffect $ Ref.new IB.default
 
 infuse :: ∀ model msg.
   (model -> InputBox -> model) ->
-  (model -> InputBox) ->
   (model -> msg -> Update msg model) ->
   (model -> msg -> Update msg model)
-infuse addIb getIb update =
+infuse addIB update =
   \model msg -> do
-  currentInputBox <- liftEffect $ Ref.read ref
-  newModel <- update (addIb model currentInputBox) msg
-  liftEffect $ Ref.write (getIb newModel) ref
-  pure newModel
+    currentInputBox <-
+      liftEffect do
+        oldState /\ mnewState <- updateState
+
+        case mnewState of
+          Just newState -> pure newState
+          Nothing -> pure oldState
+
+    update (addIB model currentInputBox) msg
+
+updateState :: Effect (InputBox /\ Maybe InputBox)
+updateState = do
+    oldState <- Ref.read ref
+    doc <- H.document'
+    mtextarea <- (H.getElementById id doc <#> H.toMaybeHTMLTextAreaElement)
+
+    newState <-
+      case mtextarea of
+        Just ta -> do
+          value <- TextArea.value ta
+          height <- toNumber <$> H.scrollHeight ta
+          selectionStart <- TextArea.selectionStart ta
+          selectionEnd <- TextArea.selectionEnd ta
+
+          let
+            newState =
+              oldState
+              # IB.setContent value
+              # IB.setHeight (height + Ds.inputBoxBorderWidth)
+              # IB.setSelectionRange (selectionStart /\ selectionEnd)
+
+          Ref.write newState ref
+          pure $ Just newState
+
+        Nothing -> pure Nothing
+
+    pure $ oldState /\ newState
 
 id :: String
 id = "input"
-
-defaultHeight :: Number
-defaultHeight = 30.0
 
 html :: Model -> Html Msg
 html model =
@@ -49,58 +85,58 @@ html model =
      , C.borderTop "none"
      ]
      [ A.id id
-     , A.noDiff $ A.value $ IB.content model.inputBox
-     , inputWithHeight
-     , detectInputEvents
+     , A.alwaysSet $ A.value $ IB.content model.inputBox
+     , A.alwaysSet
+       $ A.property "selectionStart"
+       $ toJSValue
+       $ IB.selectionStart model.inputBox
+     , A.alwaysSet
+       $ A.property "selectionEnd"
+       $ toJSValue
+       $ IB.selectionEnd model.inputBox
+     , onInput
+     , detectSpecial
      ]
      []
 
-inputWithHeight :: Attribute Msg
-inputWithHeight =
+onInput :: Attribute Msg
+onInput =
   A.on "input"
-  $ H.unsafeTarget
-    .> H.toMaybeHTMLTextAreaElement
-    .> case _ of
-         Just elem -> do
-           content <- TextArea.value elem
-           scrollHeight <- toNumber <$> H.scrollHeight elem
-           let height = scrollHeight + Ds.inputBoxBorderWidth
-           oldIb <- Ref.read ref
+    \_ -> do
+      oldState /\ mnewState <- updateState
 
-           Ref.modify_
-             (IB.update
-                content
-                height
-             )
-             ref
+      case mnewState of
+        Just newState ->
+          let
+            height = IB.height newState
 
-           let
-             helper ::
-               Boolean ->
-               (Maybe InputAction /\ Height ->
-                Maybe InputAction /\ Height
-               ) ->
-               Maybe (Maybe InputAction /\ Height) ->
-               Maybe (Maybe InputAction /\ Height)
-             helper b update ma =
+            helper ::
+              Boolean ->
+              (Maybe InputAction /\ Height ->
+               Maybe InputAction /\ Height
+              ) ->
+              Maybe (Maybe InputAction /\ Height) ->
+              Maybe (Maybe InputAction /\ Height)
+            helper b update ma =
               let helper2 a = if b then Just $ update a else ma in
               case ma of
                 Just a -> helper2 a
                 Nothing -> helper2 $ Nothing /\ height
 
-           pure
-             (Nothing
-              # helper (height /= IB.height oldIb)
-                  (\(a /\ _) -> a /\ height)
-              # helper (content == "/edit " && IB.content oldIb == "/edit")
-                  (\(_ /\ h) -> Just Edit /\ h)
-              <#> uncurry UpdateInputBox
-             )
+          in
+          pure
+          $ Nothing
+            # helper (height /= IB.height oldState)
+                (\(a /\ _) -> a /\ height)
+            # helper
+                (IB.content newState == "/edit " && IB.content oldState == "/edit")
+                (\(_ /\ h) -> Just Edit /\ h)
+            <#> uncurry UpdateInputBox
 
-         Nothing -> pure Nothing
+        Nothing -> pure Nothing
 
-detectInputEvents :: Attribute Msg
-detectInputEvents =
+detectSpecial :: Attribute Msg
+detectSpecial =
   A.on "keydown"
   $ H.toMaybeKeyboardEvent
     .> case _ of
