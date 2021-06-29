@@ -61,7 +61,7 @@ html model =
      , C.borderTop "none"
      ]
      [ A.id id
-     , A.noDiff $ A.value $ IB.content model.inputBox
+     , A.alwaysSet $ A.value $ IB.content model.inputBox
      , onInput
      , detectSpecial
      ]
