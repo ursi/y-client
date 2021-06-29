@@ -50,9 +50,6 @@ infuseRec _ =
 id :: String
 id = "input"
 
-defaultHeight :: Number
-defaultHeight = 30.0
-
 html :: Model -> Html Msg
 html model =
   textareaS
