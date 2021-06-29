@@ -62,13 +62,13 @@ html model =
      ]
      [ A.id id
      , A.noDiff $ A.value $ IB.content model.inputBox
-     , inputWithHeight
-     , detectInputEvents
+     , onInput
+     , detectSpecial
      ]
      []
 
-inputWithHeight :: Attribute Msg
-inputWithHeight =
+onInput :: Attribute Msg
+onInput =
   A.on "input"
   $ H.unsafeTarget
     .> H.toMaybeHTMLTextAreaElement
@@ -111,8 +111,8 @@ inputWithHeight =
 
          Nothing -> pure Nothing
 
-detectInputEvents :: Attribute Msg
-detectInputEvents =
+detectSpecial :: Attribute Msg
+detectSpecial =
   A.on "keydown"
   $ H.toMaybeKeyboardEvent
     .> case _ of
