@@ -100,7 +100,7 @@ init _ = do
 
 update :: Model -> Msg -> Update Msg Model
 update =
-  Input.infuseRec (Proxy :: _ "inputBox")
+  Input.infuse (_ { inputBox = _ })
     \model@{ userId, convoId } ->
       let _ = Debug.log model in
       case _ of
@@ -166,7 +166,7 @@ update =
             errorMsg =
               model
                 { inputBox =
-                    InputBox.setContent
+                    InputBox.setContentAndCursor
                       "You didn't send that message!"
                       model.inputBox
                 }
@@ -271,7 +271,7 @@ update =
                          else
                            model2
                              { inputBox =
-                                 InputBox.setContent
+                                 InputBox.setContentAndCursor
                                    ("/edit " <> mes.content)
                                    model.inputBox
                              }
