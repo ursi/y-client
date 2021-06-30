@@ -5,3 +5,4 @@
 - make clicking on a notification go to its thread
 - message links
 - add sound to notification
+- one-offs shouldn't be shown if they're replies to messages that haven't been read yet
