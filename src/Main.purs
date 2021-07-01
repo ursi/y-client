@@ -44,9 +44,19 @@ import Y.Shared.Util.Instant as Instant
 
 foreign import initialize_f :: ∀ a b r.  (Id a -> Id b -> r) -> Id a -> Id b -> Effect r
 foreign import getHostname :: Effect String
-foreign import sendNotification :: String -> String -> Effect Unit
+foreign import sendNotification :: Boolean -> String -> String -> String -> Effect Unit
 foreign import notificationsPermission :: Effect Unit
 foreign import hasFocus :: Effect Boolean
+foreign import setItem :: String -> String -> Effect Unit
+
+foreign import getItemImpl ::
+  (∀ a. Maybe a) ->
+  (∀ a. a -> Maybe a) ->
+  String ->
+  Effect (Maybe String)
+
+getItem :: String -> Effect (Maybe String)
+getItem = getItemImpl Nothing Just
 
 main :: Program Unit Model Msg
 main = do
@@ -79,6 +89,8 @@ init _ = do
            wsClient
     )
 
+  notificationSound <- debugger liftEffect (getItem audioLSKey) <#> fromMaybe ""
+
   pure
     { convoId
     , userId
@@ -96,6 +108,7 @@ init _ = do
     , messageParent: Nothing
     , nameInput: ""
     , unread: false
+    , notificationSound
     }
 
 update :: Model -> Msg -> Update Msg Model
@@ -104,6 +117,10 @@ update =
     \model@{ userId, convoId } ->
       let _ = Debug.log model in
       case _ of
+        UpdateNotificationSound soundName -> do
+          liftEffect $ setItem audioLSKey soundName
+          pure $ model { notificationSound = soundName }
+
         Undo -> pure $ model { inputBox = InputBox.undo model.inputBox }
         Focused -> pure $ model { unread = false }
 
@@ -360,6 +377,8 @@ update =
                   else
                     liftEffect
                     $ sendNotification
+                        (model.notificationSound /= "")
+                        (makeAudioUrl model.notificationSound)
                         (getName mes.authorId model3.events.folded.names)
                         mes.content
 
@@ -374,6 +393,12 @@ update =
             Ws.transmit (ToServer_Subscribe { userId, convoId }) model.wsClient
             Ws.transmit (ToServer_Pull { convoId }) model.wsClient
           pure model
+
+makeAudioUrl :: String -> String
+makeAudioUrl name = "https://www.myinstants.com/media/sounds/" <> name <> ".mp3"
+
+audioLSKey :: String
+audioLSKey = "notification-sound"
 
 pushReadEvent :: Model -> Id "Message" -> Update Msg Model
 pushReadEvent model@{ convoId, userId, events } mid =
@@ -583,6 +608,18 @@ view model =
           []
           [ H.divS [ Ds.panel ] []
               [ nameChanger model
+              , H.divS [ C.margin ".3em" ] []
+                  [ H.text "Notification Sound "
+                  , H.inputS
+                      [ Ds.inputStyles
+                      , C.border "none"
+                      , C.borderRadius "5px"
+                      , C.padding "3px"
+                      ]
+                      [ A.value model.notificationSound
+                      , A.onInput UpdateNotificationSound
+                      ]
+                  ]
               , threadBar model
               ]
           , threadView model

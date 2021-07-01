@@ -13,10 +13,13 @@ exports.initialize_f = mk2Tuple => freshUid => freshCid => () => {
 
 exports.dateString = ms => new Date(ms)
 
-exports.sendNotification = person => message => () => {
-	if (!document.hasFocus())
+exports.sendNotification = playSound => soundUrl => person => message => () => {
+	if (!document.hasFocus()) {
+		if (playSound) new Audio(soundUrl).play();
+
 		new Notification(`⅄`, {body: person + ":\n" + message})
 			.onclick = function() {focus(window); this.close()};
+	}
 };
 
 exports.notificationsPermission = () => Notification.requestPermission();
@@ -24,3 +27,10 @@ exports.notificationsPermission = () => Notification.requestPermission();
 exports.isSelecting = () => getSelection().type === `Range`;
 
 exports.hasFocus = () => document.hasFocus();
+
+exports.setItem = key => value => () => localStorage[key] = value;
+
+exports.getItemImpl = Nothing => Just => key => () => {
+	const x = localStorage[key];
+	return x === undefined ? Nothing : Just(x);
+};
