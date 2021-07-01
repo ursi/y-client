@@ -611,11 +611,7 @@ view model =
               , H.divS [ C.margin ".3em" ] []
                   [ H.text "Notification Sound "
                   , H.inputS
-                      [ Ds.inputStyles
-                      , C.border "none"
-                      , C.borderRadius "5px"
-                      , C.padding "3px"
-                      ]
+                      [ Ds.inputStyles2 ]
                       [ A.value model.notificationSound
                       , A.onInput UpdateNotificationSound
                       ]
@@ -631,11 +627,7 @@ nameChanger :: Model -> Html Msg
 nameChanger model =
   H.divS [ C.margin ".3em" ] []
     [ H.inputS
-        [ Ds.inputStyles
-        , C.border "none"
-        , C.borderRadius "5px"
-        , C.padding "3px"
-        ]
+        [ Ds.inputStyles2 ]
         [ A.value model.nameInput
         , A.onInput UpdateNameInput
         ]
