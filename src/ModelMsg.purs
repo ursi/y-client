@@ -21,6 +21,7 @@ type Model =
   , messageParent :: Maybe (Id "Message")
   , nameInput :: String
   , unread :: Boolean
+  , notificationSound :: String
   }
 
 type Leaf = (Id "Message")
@@ -56,6 +57,7 @@ data Msg
   | UpdateName
   | SelectSibling (Id "Message")
   | Undo
+  | UpdateNotificationSound String
   | Focused
 
 instance Eq Msg where
