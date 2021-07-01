@@ -6113,7 +6113,8 @@ var PS = {};
   var grid = declaration("grid");
   var gridAutoRows = declaration("grid-auto-rows");
   var height = declaration("height");
-  var left = declaration("left");                    
+  var left = declaration("left");         
+  var lineHeight = declaration("line-height");       
   var margin = declaration("margin");                      
   var marginBottom = declaration("margin-bottom");
   var marginLeft = declaration("margin-left");  
@@ -6171,6 +6172,7 @@ var PS = {};
   exports["gridAutoRows"] = gridAutoRows;
   exports["height"] = height;
   exports["left"] = left;
+  exports["lineHeight"] = lineHeight;
   exports["margin"] = margin;
   exports["marginBottom"] = marginBottom;
   exports["marginLeft"] = marginLeft;
@@ -8497,10 +8499,7 @@ var PS = {};
   exports["startsWith"] = startsWith;
 })(PS);
 (function(exports) {
-  exports.debugger = a => {
-	  debugger;
-	  return a;
-  };
+    
 
   exports.log = a => {
 	  console.log(a);
@@ -8514,7 +8513,6 @@ var PS = {};
   var exports = $PS["Debug"];
   var $foreign = $PS["Debug"];
   exports["log"] = $foreign.log;
-  exports["debugger"] = $foreign["debugger"];
 })(PS);
 (function(exports) {
   exports.raf = effect => () => window.requestAnimationFrame(effect);
@@ -8854,11 +8852,13 @@ var PS = {};
   var staticStyles = Css_Global.style([ Css_Global.body([ sv.styles, Css.margin("0"), Css.fontFamily("monospace"), Css.background(vars.background), Css.color(vars.color) ]), Css_Global.button([ Css.background(vars.lighterBackground32), Css.color(vars.color), Css.border("none"), Css.variable("padding")("4px"), Css.paddingTop(Css_Functions["var"]("padding")), Css.paddingBottom(Css_Functions["var"]("padding")), Css.fontFamily("monospace") ]), Css_Global.rule("::-webkit-scrollbar")([ Css.variable("size")("10px"), Css.width(Css_Functions["var"]("size")), Css.height(Css_Functions["var"]("size")) ]), Css_Global.rule("::-webkit-scrollbar-thumb")([ Css.background(vars.lighterBackground60), Css.borderRadius("3px") ]), Css_Global.rule("::-webkit-scrollbar-track")([ Css.background(vars.lighterBackground22) ]) ]);
   var panel = Platform.batch([ Css.display("grid"), Css.gridAutoRows("fit-content(100%)") ]);
   var inputStyles = Platform.batch([ Css.outline("none"), Css.background(vars.lighterBackground22), Css.color(vars.color), Css.fontFamily("monospace") ]);
+  var inputStyles2 = Platform.batch([ inputStyles, Css.border("none"), Css.borderRadius("5px"), Css.padding("3px"), Css.lineHeight("1.25") ]);
   var inputBoxBorderWidth = 1.0;
   var following = Css.mapSelector(Css.prepend("* + "));
   exports["following"] = following;
   exports["inputBoxBorderWidth"] = inputBoxBorderWidth;
   exports["inputStyles"] = inputStyles;
+  exports["inputStyles2"] = inputStyles2;
   exports["panel"] = panel;
   exports["staticStyles"] = staticStyles;
   exports["vars"] = vars;
@@ -10809,7 +10809,7 @@ var PS = {};
                       if (v1 instanceof Data_Either.Left) {
                           return false;
                       };
-                      throw new Error("Failed pattern match at Main (line 674, column 25 - line 685, column 42): " + [ v1.constructor.name ]);
+                      throw new Error("Failed pattern match at Main (line 666, column 25 - line 677, column 42): " + [ v1.constructor.name ]);
                   })();
                   var $102 = !isChosen && (isRead && Data_Eq.notEq(Data_Maybe.eqMaybe(Y_Shared_Id.eqId))(model.thread)(new Data_Maybe.Just(mid))) || v.value0.value.deleted;
                   if ($102) {
@@ -10832,12 +10832,12 @@ var PS = {};
               if (v instanceof Data_Maybe.Nothing) {
                   return Data_Monoid.mempty(Data_Batched["$_MonoidBatched_8"]);
               };
-              throw new Error("Failed pattern match at Main (line 669, column 17 - line 715, column 36): " + [ v.constructor.name ]);
+              throw new Error("Failed pattern match at Main (line 661, column 17 - line 707, column 36): " + [ v.constructor.name ]);
           })(TreeMap.lookup(Y_Shared_Id.ordId)(mid)(model.events.folded.messages));
       })) ]);
   };
   var nameChanger = function (model) {
-      return Html.divS([ Css.margin(".3em") ])([  ])([ Html.inputS([ Design.inputStyles, Css.border("none"), Css.borderRadius("5px"), Css.padding("3px") ])([ Attribute.value(model.nameInput), Attribute.onInput(Producer.produceab)(ModelMsg.UpdateNameInput.create) ]), Html.buttonS([ Css.marginLeft("5px") ])([ Attribute.onClick(Producer.producea(ModelMsg["$_EqMsg_5"]))(ModelMsg.UpdateName.value) ])([ Html.text("Update Name") ]) ]);
+      return Html.divS([ Css.margin(".3em") ])([  ])([ Html.inputS([ Design.inputStyles2 ])([ Attribute.value(model.nameInput), Attribute.onInput(Producer.produceab)(ModelMsg.UpdateNameInput.create) ]), Html.buttonS([ Css.marginLeft("5px") ])([ Attribute.onClick(Producer.producea(ModelMsg["$_EqMsg_5"]))(ModelMsg.UpdateName.value) ])([ Html.text("Update Name") ]) ]);
   };
   var makeAudioUrl = function (name) {
       return "https://www.myinstants.com/media/sounds/" + (name + ".mp3");
@@ -10916,7 +10916,7 @@ var PS = {};
                                   if (v1 instanceof Data_Maybe.Nothing) {
                                       return Data_Monoid.mempty(Data_Batched["$_MonoidBatched_8"]);
                                   };
-                                  throw new Error("Failed pattern match at Main (line 799, column 33 - line 808, column 52): " + [ v1.constructor.name ]);
+                                  throw new Error("Failed pattern match at Main (line 791, column 33 - line 800, column 52): " + [ v1.constructor.name ]);
                               })(Data_Functor.mapFlipped(Data_Maybe.functorMaybe)(getParent(mes)(model.events.folded.messages))(PointFree.applySecond(function ($209) {
                                   return formatTimeDiff((function (v1) {
                                       return v1.timeSent;
@@ -10951,7 +10951,7 @@ var PS = {};
               };
               return "";
           })()) ],
-          body: [ Design.staticStyles, Html.divS([ Css.display("grid"), Css.grid("100vh / min(30%, 350px) 1fr") ])([  ])([ Html.divS([ Design.panel ])([  ])([ nameChanger(model), Html.divS([ Css.margin(".3em") ])([  ])([ Html.text("Notification Sound "), Html.inputS([ Design.inputStyles, Css.border("none"), Css.borderRadius("5px"), Css.padding("3px") ])([ Attribute.value(model.notificationSound), Attribute.onInput(Producer.produceab)(ModelMsg.UpdateNotificationSound.create) ]) ]), threadBar(model) ]), threadView(model) ]) ]
+          body: [ Design.staticStyles, Html.divS([ Css.display("grid"), Css.grid("100vh / min(30%, 350px) 1fr") ])([  ])([ Html.divS([ Design.panel ])([  ])([ nameChanger(model), Html.divS([ Css.margin(".3em") ])([  ])([ Html.text("Notification Sound "), Html.inputS([ Design.inputStyles2 ])([ Attribute.value(model.notificationSound), Attribute.onInput(Producer.produceab)(ModelMsg.UpdateNotificationSound.create) ]) ]), threadBar(model) ]), threadView(model) ]) ]
       };
   };
   var foldEvents = function ($210) {
@@ -11049,7 +11049,7 @@ var PS = {};
                   return Control_Bind.discard(Control_Bind.discardUnit)(Control_Monad_Writer_Trans.bindWriterT(Platform["$_SemigroupCmd_9"])(Effect.bindEffect))(Control_Monad_Writer_Class.tell(Control_Monad_Writer_Trans.monadTellWriterT(Platform["$_MonoidCmd_10"])(Effect.monadEffect))(function (msgCallback) {
                       return Y_Client_WebSocket.onOpen(msgCallback(ModelMsg.WebSocketOpened.value))(wsClient);
                   }))(function () {
-                      return Control_Bind.bind(Control_Monad_Writer_Trans.bindWriterT(Platform["$_SemigroupCmd_9"])(Effect.bindEffect))(Data_Functor.mapFlipped(Control_Monad_Writer_Trans.functorWriterT(Effect.functorEffect))(Debug["debugger"](Effect_Class.liftEffect(Control_Monad_Writer_Trans.monadEffectWriter(Platform["$_MonoidCmd_10"])(Effect_Class.monadEffectEffect)))(getItem(audioLSKey)))(Data_Maybe.fromMaybe("")))(function (notificationSound) {
+                      return Control_Bind.bind(Control_Monad_Writer_Trans.bindWriterT(Platform["$_SemigroupCmd_9"])(Effect.bindEffect))(Data_Functor.mapFlipped(Control_Monad_Writer_Trans.functorWriterT(Effect.functorEffect))(Effect_Class.liftEffect(Control_Monad_Writer_Trans.monadEffectWriter(Platform["$_MonoidCmd_10"])(Effect_Class.monadEffectEffect))(getItem(audioLSKey)))(Data_Maybe.fromMaybe("")))(function (notificationSound) {
                           return Control_Applicative.pure(Control_Monad_Writer_Trans.applicativeWriterT(Platform["$_MonoidCmd_10"])(Effect.applicativeEffect))({
                               convoId: v1.value1,
                               userId: v1.value0,
