@@ -2,6 +2,7 @@ module Design
   ( following
   , inputBoxBorderWidth
   , inputStyles
+  , inputStyles2
   , panel
   , staticStyles
   , vars
@@ -95,4 +96,14 @@ inputStyles =
     , C.background vars.lighterBackground22
     , C.color vars.color
     , C.fontFamily "monospace"
+    ]
+
+inputStyles2 :: Styles
+inputStyles2 =
+  batch
+    [ inputStyles
+    , C.border "none"
+    , C.borderRadius "5px"
+    , C.padding "3px"
+    , C.lineHeight "1.25"
     ]
