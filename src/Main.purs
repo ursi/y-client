@@ -89,7 +89,7 @@ init _ = do
            wsClient
     )
 
-  notificationSound <- debugger liftEffect (getItem audioLSKey) <#> fromMaybe ""
+  notificationSound <- liftEffect (getItem audioLSKey) <#> fromMaybe ""
 
   pure
     { convoId
