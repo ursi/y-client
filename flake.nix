@@ -12,10 +12,14 @@
 
            y-repo =
              { repo = "https://github.com/Quelklef/y.git";
-               rev = "eb336a95918cba36e45ee6a3ae9519b121eebc3a";
+               rev = "6780641af1bc264c27d4d8795eea8fb74f3b8161";
              };
 
            y = fetchGit { url = y-repo.repo; inherit (y-repo) rev; };
+
+           extra-deps =
+             import ./extra-dependencies.nix
+               (purs-nix // { inherit y-repo; });
 
            inherit
              (purs
@@ -25,24 +29,8 @@
                     [ stringutils
                       ursi.elmish
                       ursi.prelude
-                      (build
-                         { name = "y-shared";
-                           inherit (y-repo) repo rev;
-                           src = "shared/src";
-
-                           dependencies =
-                             with ps-pkgs;
-                             [ argonaut-generic
-                               console
-                             ];
-                         }
-                      )
-                      (build
-                         { name = "websocket";
-                           inherit (y-repo) repo rev;
-                           install = "mkdir $out; cp client/src/WebSocket.* $out";
-                         }
-                      )
+                      extra-deps.websocket
+                      extra-deps.y-shared
                     ];
                 }
              )

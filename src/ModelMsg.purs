@@ -8,8 +8,8 @@ import TreeMap (TreeMap)
 import Y.Client.WebSocket (Client)
 import Y.Shared.Event (Event)
 import Y.Shared.Id (Id)
-import Y.Shared.Message (Message)
 import Y.Shared.Transmission (ToClient, ToServer)
+import Y.Shared.Util.Instant (Instant)
 
 type Model =
   { convoId :: Id "Convo"
@@ -24,6 +24,14 @@ type Model =
   , notificationSound :: String
   }
 
+type YMessage =
+  { messageId :: Id "Message"
+  , depIds :: Set (Id "Message")
+  , timeSent :: Instant
+  , content :: String
+  , userId :: Id "User"
+  }
+
 type Leaf = (Id "Message")
 
 type Events =
@@ -35,9 +43,10 @@ type FoldedEvents =
   { names :: Map (Id "User") String
   , messages :: MessageTree
   , read :: Set (Id "User" /\ Id "Message")
+  , deleted :: Set (Id "Message")
   }
 
-type MessageTree = TreeMap (Id "Message") Message
+type MessageTree = TreeMap (Id "Message") YMessage
 
 type Height = Number
 

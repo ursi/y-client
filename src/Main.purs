@@ -21,7 +21,15 @@ import Html (Html)
 import Html as H
 import Input (focusInput, hitEnter)
 import Input as Input
-import ModelMsg (FoldedEvents, InputAction(..), Leaf, MessageTree, Model, Msg(..))
+import ModelMsg
+  ( FoldedEvents
+  , InputAction(..)
+  , Leaf
+  , MessageTree
+  , Model
+  , Msg(..)
+  , YMessage
+  )
 import InputBox as InputBox
 import Platform (Cmd(..), Program, Update, batch, tell)
 import Platform as Platform
@@ -37,7 +45,6 @@ import Y.Client.WebSocket as Ws
 import Y.Shared.Event (Event(..), EventPayload(..))
 import Y.Shared.Id (Id)
 import Y.Shared.Id as Id
-import Y.Shared.Message (Message)
 import Y.Shared.Transmission (ToClient(..), ToServer(..))
 import Y.Shared.Util.Instant (Instant, asMilliseconds)
 import Y.Shared.Util.Instant as Instant
@@ -349,7 +356,7 @@ update =
                     , unread = if focused then false else true
                     }
 
-                firstMessage :: Maybe Message
+                firstMessage :: Maybe YMessage
                 firstMessage =
                   splitEvents events
                   # _.messageSend
@@ -517,66 +524,60 @@ foldEvents =
              )
              Set.empty
              events.setReadState
+       -- todo
+       , deleted: Set.empty
        }
 
 splitEvents ::
   Array Event ->
   { setName ::
        List
-         { convoId :: Id "Convo"
+         { name :: String
          , userId :: Id "User"
-         , name :: String
          }
-   , messageSend ::
-       List
-         { convoId :: Id "Convo"
-         , message :: Message
-         }
+   , messageSend :: List YMessage
    , messageEdit ::
        List
-         { convoId :: Id "Convo"
-         , messageId :: Id "Message"
-         , authorId :: Id "User"
+         { messageId :: Id "Message"
+         , userId :: Id "User"
          , content :: String
          }
    , messageDelete ::
        List
-         { convoId :: Id "Convo"
-         , userId :: Id "User"
+         { userId :: Id "User"
          , messageId :: Id "Message"
          }
    , setReadState ::
        List
-         { convoId :: Id "Convo"
-         , userId :: Id "User"
+         { userId :: Id "User"
          , messageId :: Id "Message"
-         , readState :: Boolean
+         , isUnread :: Boolean
          }
    }
 splitEvents =
   foldr
-    (\(Event event) acc ->
-       case event.payload of
-         EventPayload_SetName data' ->
-           acc { setName = data' : acc.setName }
+    (\(Event event) acc -> acc
+       -- case event.payload of
+       --   EventPayload_SetName data' ->
+       --     acc { setName = data' : acc.setName }
 
-         EventPayload_MessageSend data' ->
-           acc { messageSend = data' : acc.messageSend }
+       --   EventPayload_MessageSend data' ->
+       --     acc { messageSend = data' : acc.messageSend }
 
-         EventPayload_MessageEdit data' ->
-           acc { messageEdit = data' : acc.messageEdit }
+       --   EventPayload_MessageEdit data' ->
+       --     acc { messageEdit = data' : acc.messageEdit }
 
-         EventPayload_MessageDelete data' ->
-           acc { messageDelete = data' : acc.messageDelete }
+       --   EventPayload_MessageDelete data' ->
+       --     acc { messageDelete = data' : acc.messageDelete }
 
-         EventPayload_SetReadState data' ->
-           acc { setReadState = data' : acc.setReadState }
+       --   EventPayload_SetReadState data' ->
+       --     acc { setReadState = data' : acc.setReadState }
     )
     mempty
 
-toIVP :: Message -> IVP (Id "Message") Message
-toIVP value@{ id, depIds } =
-  { id
+toIVP :: YMessage -> IVP (Id "Message") YMessage
+toIVP value@{ messageId, depIds } =
+  { id: messageId
   , value
   , parent: Set.findMax depIds
   }
@@ -658,10 +659,10 @@ threadBar model =
         []
       $ leaves
         <#> \mid ->
-              let { messages, read } = model.events.folded in
+              let { messages, read, deleted } = model.events.folded in
               TreeMap.lookup mid messages
               # case _ of
-                  Just { value: { authorId, content, deleted, timeSent } } ->
+                  Just { value: { userId, content, timeSent } } ->
                     let
                       isChosen :: Boolean
                       isChosen =
@@ -671,7 +672,7 @@ threadBar model =
                             (true /\ timeSent)
                             <= foldl
                                  (\(chosen /\ oldest) m ->
-                                    min chosen (TreeMap.isLeaf m.id messages)
+                                    min chosen (TreeMap.isLeaf m.messageId messages)
                                     /\ min oldest m.timeSent
                                  )
                                  (true /\ timeSent)
@@ -680,9 +681,12 @@ threadBar model =
 
                       isRead :: Boolean
                       isRead =
-                        authorId == model.userId || Set.member (model.userId /\ mid) read
+                        userId == model.userId || Set.member (model.userId /\ mid) read
+
+                      isDeleted :: Boolean
+                      isDeleted = Set.member mid deleted
                     in
-                    if (not isChosen && isRead && model.thread /= Just mid) || deleted then
+                    if (not isChosen && isRead && model.thread /= Just mid) || isDeleted then
                       mempty
                     else
                       H.divS
@@ -697,7 +701,7 @@ threadBar model =
                         ]
                         [ onNotSelectingClick $ SelectThread mid ]
                         [ H.spanS
-                            [ if authorId == model.userId || isRead then
+                            [ if userId == model.userId || isRead then
                                 mempty
                               else
                                 C.color "#ff4040"
@@ -726,7 +730,7 @@ threadView model =
     ]
 
     where
-      mthread :: Maybe (Thread Message)
+      mthread :: Maybe (Thread YMessage)
       mthread =
         model.thread
         >>= TreeMap.getThread ~$ model.events.folded.messages
@@ -742,14 +746,17 @@ threadView model =
           , H.button [ A.onClick SendMessage ] [ H.text "Send" ]
           ]
 
-      messageList :: Thread Message -> Html Msg
+      messageList :: Thread YMessage -> Html Msg
       messageList =
         Array.fromFoldable
         .> map
              (\(message /\ siblings) ->
                 let
-                  createMessage :: IsSibling -> Styles -> Message -> Html Msg
+                  createMessage :: IsSibling -> Styles -> YMessage -> Html Msg
                   createMessage isSibling styles mes =
+                    let
+                      isDeleted = Set.member mes.messageId model.events.folded.deleted
+                    in
                     H.divS
                       [ Ds.following [ C.borderBottom "1px solid" ]
                       , C.position "relative"
@@ -758,9 +765,9 @@ threadView model =
                       ]
                       [ onNotSelectingClick
                         $ (if isSibling then SelectSibling else SelectMessageParent)
-                            mes.id
+                            mes.messageId
                       ]
-                      [ if model.messageParent == Just mes.id then
+                      [ if model.messageParent == Just mes.messageId then
                           H.divS
                             [ C.position "absolute"
                             , C.background
@@ -778,7 +785,7 @@ threadView model =
                             []
                         else
                           mempty
-                      , if mes.deleted then
+                      , if isDeleted then
                           mempty
                         else
                           H.divS
@@ -787,7 +794,7 @@ threadView model =
                             , C.marginBottom "0.7em"
                             ]
                             []
-                            [ H.text $ getName mes.authorId model.events.folded.names
+                            [ H.text $ getName mes.userId model.events.folded.names
                             , getParent mes model.events.folded.messages
                               <#> formatTimeDiff <. _.timeSent ~$ mes.timeSent
                               # case _ of
@@ -809,7 +816,7 @@ threadView model =
                           ]
                           []
                           [ H.text
-                              if mes.deleted then
+                              if isDeleted then
                                 "(deleted)"
                               else
                                 mes.content
@@ -840,9 +847,9 @@ getName id names = Map.lookup id names # fromMaybe "<anonymous>"
 
 foreign import dateString :: Number -> String
 
-getParent :: Message -> MessageTree -> Maybe Message
-getParent { id } tm =
-  TreeMap.lookup id tm
+getParent :: YMessage -> MessageTree -> Maybe YMessage
+getParent { messageId } tm =
+  TreeMap.lookup messageId tm
   >>= _.parent
   >>= TreeMap.lookup ~$ tm
   <#> _.value
