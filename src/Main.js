@@ -1,6 +1,6 @@
-exports.getHostname = () => window.location.hostname;
+export const getHostname = () => window.location.hostname;
 
-exports.initialize_f = mk2Tuple => freshUid => freshCid => () => {
+export const initialize_f = mk2Tuple => freshUid => freshCid => () => {
   let userId = localStorage.getItem('userId');
   if (!userId) userId = freshUid
   localStorage.setItem('userId', userId);
@@ -11,9 +11,9 @@ exports.initialize_f = mk2Tuple => freshUid => freshCid => () => {
   return mk2Tuple(userId)(convoId);
 };
 
-exports.dateString = ms => new Date(ms)
+export const dateString = ms => new Date(ms)
 
-exports.sendNotification = playSound => soundUrl => person => message => () => {
+export const sendNotification = playSound => soundUrl => person => message => () => {
 	if (!document.hasFocus()) {
 		if (playSound) new Audio(soundUrl).play();
 
@@ -22,15 +22,16 @@ exports.sendNotification = playSound => soundUrl => person => message => () => {
 	}
 };
 
-exports.notificationsPermission = () => Notification.requestPermission();
+export const notificationsPermission =
+	() => Notification.requestPermission();
 
-exports.isSelecting = () => getSelection().type === `Range`;
+export const isSelecting = () => getSelection().type === `Range`;
 
-exports.hasFocus = () => document.hasFocus();
+export const hasFocus = () => document.hasFocus();
 
-exports.setItem = key => value => () => localStorage[key] = value;
+export const setItem = key => value => () => localStorage[key] = value;
 
-exports.getItemImpl = Nothing => Just => key => () => {
+export const getItemImpl = Nothing => Just => key => () => {
 	const x = localStorage[key];
 	return x === undefined ? Nothing : Just(x);
 };

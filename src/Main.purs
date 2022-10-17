@@ -4,6 +4,11 @@ import MasonPrelude
 
 import Attribute (Attribute)
 import Attribute as A
+import Compat.Event (Event(..), EventPayload(..))
+import Compat.Message (Message)
+import Compat.Transmission
+  (ToClient(..), ToServer(..), fromToClient, toToServer)
+
 import Css (Styles)
 import Css as C
 import Css.Functions as CF
@@ -34,15 +39,18 @@ import WebSocketSub (wsToSub)
 import WHATWG.HTML.All as HTML
 import Y.Client.WebSocket (Client)
 import Y.Client.WebSocket as Ws
-import Y.Shared.Event (Event(..), EventPayload(..))
 import Y.Shared.Id (Id)
 import Y.Shared.Id as Id
-import Y.Shared.Message (Message)
-import Y.Shared.Transmission (ToClient(..), ToServer(..))
-import Y.Shared.Util.Instant (Instant, asMilliseconds)
-import Y.Shared.Util.Instant as Instant
+import Y.Shared.Instant (Instant, asMilliseconds)
+import Y.Shared.Instant as Instant
+import Y.Shared.Transmission as Trans
 
-foreign import initialize_f :: ∀ a b r.  (Id a -> Id b -> r) -> Id a -> Id b -> Effect r
+foreign import initialize_f ::
+  ∀ r.
+  (String -> String -> r) ->
+  String ->
+  String ->
+  Effect r
 foreign import getHostname :: Effect String
 foreign import sendNotification :: Boolean -> String -> String -> String -> Effect Unit
 foreign import notificationsPermission :: Effect Unit
@@ -72,14 +80,23 @@ init _ = do
   liftEffect notificationsPermission
 
   userId /\ convoId <- liftEffect do
-    freshUserId /\ freshConvoId <- liftEffect $ lift2 Tuple Id.new Id.new
-    initialize_f Tuple freshUserId freshConvoId
+    (freshUserId :: Id "User") /\ (freshConvoId :: Id "Convo" ) <-
+      liftEffect $ lift2 Tuple Id.new Id.new
+    initialize_f
+      (\idStr1 idStr2 ->
+         case lift2 Tuple (Id.parse idStr1) (Id.parse idStr2) of
+           Right t -> t
+           Left error -> unsafeThrow error
+      )
+      (Id.format freshUserId)
+      (Id.format freshConvoId)
 
   wsClient <-
     liftEffect do
       hostname <- getHostname
       Ws.newConnection { url: "ws://" <> hostname <> ":8081" }
       -- Ws.newConnection { url: "wss://y.maynards.site:8081" }
+      -- Ws.newConnection { url: "wss://pre.y.maynards.site:8081" }
 
   tell
     (Cmd
@@ -390,8 +407,15 @@ update =
 
         WebSocketOpened -> do
           liftEffect do
-            Ws.transmit (ToServer_Subscribe { userId, convoId }) model.wsClient
-            Ws.transmit (ToServer_Pull { convoId }) model.wsClient
+            Ws.transmit (Trans.ToServer_Hello { userId }) model.wsClient
+            Ws.transmit
+              (toToServer $ ToServer_Subscribe { userId, convoId })
+              model.wsClient
+
+            Ws.transmit
+              (toToServer $ ToServer_Pull { convoId })
+              model.wsClient
+
           pure model
 
 makeAudioUrl :: String -> String
@@ -423,7 +447,7 @@ pushReadEvent model@{ convoId, userId, events } mid =
 
 pushEvent :: ∀ a r.
   { convoId :: Id "Convo"
-  , wsClient :: Client ToServer a
+  , wsClient :: Client Trans.ToServer a
   | r
   } ->
   (Instant -> EventPayload) ->
@@ -431,8 +455,9 @@ pushEvent :: ∀ a r.
 pushEvent { convoId, wsClient } payload = do
   eventId :: Id "Event" <- Id.new
   now <- Instant.getNow
-  Ws.transmit
-    (ToServer_Push
+  (Ws.transmit)
+    (toToServer
+     $ ToServer_Push
        { convoId
        , event:
            Event
@@ -581,10 +606,16 @@ toIVP value@{ id, depIds } =
   , parent: Set.findMax depIds
   }
 
+-- separate function cuz wsToSub uses Refeq
+transmissionReceived :: Maybe Trans.ToClient -> Msg
+transmissionReceived = case _ of
+  Just toClient -> TransmissionReceived $ Just $ fromToClient toClient
+  Nothing -> TransmissionReceived Nothing
+
 subscriptions :: Model -> Sub Msg
 subscriptions model =
   batch
-    [ wsToSub TransmissionReceived model.wsClient
+    [ wsToSub transmissionReceived model.wsClient
     , Sub.on "keydown" hitEnter
     , Sub.on "focus" focusHandler
     ]

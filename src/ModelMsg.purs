@@ -1,20 +1,22 @@
 module ModelMsg where
 
 import MasonPrelude
+
+import Compat.Event (Event)
+import Compat.Message (Message)
+import Compat.Transmission (ToClient)
 import Data.Map (Map)
 import Data.Set (Set)
 import InputBox (InputBox)
 import TreeMap (TreeMap)
 import Y.Client.WebSocket (Client)
-import Y.Shared.Event (Event)
 import Y.Shared.Id (Id)
-import Y.Shared.Message (Message)
-import Y.Shared.Transmission (ToClient, ToServer)
+import Y.Shared.Transmission as Trans
 
 type Model =
   { convoId :: Id "Convo"
   , userId :: Id "User"
-  , wsClient :: Client ToServer ToClient
+  , wsClient :: Client Trans.ToServer Trans.ToClient
   , events :: Events
   , inputBox :: InputBox
   , thread :: Maybe Leaf
