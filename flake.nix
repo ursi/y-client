@@ -1,18 +1,20 @@
 { inputs =
-    { nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
-      purs-nix.url = "github:ursi/purs-nix";
-      utils.url = "github:ursi/flake-utils/2";
+    { make-shell.url = "github:ursi/nix-make-shell/1";
+      nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+      ps-tools.follows = "purs-nix/ps-tools";
+      purs-nix.url = "github:ursi/purs-nix/ps-0.15";
+      utils.url = "github:ursi/flake-utils/8";
     };
 
   outputs = { utils, ... }@inputs:
-    utils.default-systems
-      ({ make-shell, pkgs, purs-nix, ... }:
+    utils.apply-systems { inherit inputs; }
+      ({ make-shell, pkgs, ps-tools, purs-nix, ... }:
          let
            inherit (purs-nix) build ps-pkgs ps-pkgs-ns purs;
 
            y-repo =
              { repo = "https://github.com/Quelklef/y.git";
-               rev = "eb336a95918cba36e45ee6a3ae9519b121eebc3a";
+               rev = "4422547a0a484737b4f3e97410c4c893d2d130fc";
              };
 
            y = fetchGit { url = y-repo.repo; inherit (y-repo) rev; };
@@ -27,20 +29,53 @@
                       ursi.prelude
                       (build
                          { name = "y-shared";
-                           inherit (y-repo) repo rev;
-                           src = "shared/src";
+                           src.git = { inherit (y-repo) repo rev; };
 
-                           dependencies =
-                             with ps-pkgs;
-                             [ argonaut-generic
-                               console
-                             ];
+                           info =
+                             { src = "shared/src";
+
+                               dependencies =
+                                 with ps-pkgs;
+                                 [ argonaut-generic
+                                   console
+                                   (build
+                                      { name = "postgres";
+
+                                        src.git =
+                                          { repo = "https://github.com/Quelklef/purescript-postgres.git";
+                                            rev = "cec8d32b614719bb21b7622dbd2d2fdb051fefcf";
+                                          };
+
+                                        info.dependencies =
+                                          with ps-pkgs;
+                                          [ aff
+                                            effect
+                                            lists
+                                            arrays
+                                            maybe
+                                            either
+                                            aff
+                                            aff-promise
+                                            argonaut-core
+                                            argonaut-codecs
+                                            argonaut-generic
+                                            spec  # actually
+                                         ];
+                                      }
+                                   )
+                                   quickcheck
+                                 ];
+                             };
                          }
                       )
                       (build
                          { name = "websocket";
-                           inherit (y-repo) repo rev;
-                           install = "mkdir $out; cp client/src/WebSocket.* $out";
+                           src.git = { inherit (y-repo) repo rev; };
+
+                           info =
+                             { src = "shared/src";
+                               install = "mkdir $out; cp client/src/WebSocket.* $out";
+                             };
                          }
                       )
                     ];
@@ -56,7 +91,7 @@
                      nodejs
                      nodePackages.live-server
                      purs-nix.purescript
-                     purs-nix.purescript-language-server
+                     ps-tools.for-0_15.purescript-language-server
                      (command {})
                    ];
 
@@ -72,6 +107,5 @@
                    '';
                };
          }
-      )
-      inputs;
+      );
 }
