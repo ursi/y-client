@@ -93,7 +93,7 @@ init _ = do
 
   wsClient <-
     liftEffect
-    $ Ws.newConnection { url: "wss://pre.y.maynards.site:8081" }
+    $ Ws.newConnection { url: "wss://y.maynards.site:8081" }
 
   tell
     (Cmd

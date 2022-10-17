@@ -10962,7 +10962,7 @@ var init3 = function(v) {
       })(format2(v1.value0))(format1(v1.value1))();
     }))(function(v1) {
       return bind24(liftEffect4(newConnection({
-        url: "wss://pre.y.maynards.site:8081"
+        url: "wss://y.maynards.site:8081"
       })))(function(wsClient) {
         return discard1(tell3(function(msgCallback) {
           return onOpen(msgCallback(WebSocketOpened.value))(wsClient);
