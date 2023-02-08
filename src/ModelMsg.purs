@@ -26,7 +26,7 @@ type Model =
   , notificationSound :: String
   }
 
-type Leaf = (Id "Message")
+type Leaf = Id "Message"
 
 type Events =
   { raw :: Array Event
