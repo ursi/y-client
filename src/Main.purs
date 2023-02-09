@@ -801,7 +801,7 @@ createMessage model isSibling styles mes =
 
 threadView :: Model -> Html Msg
 threadView model =
-  H.divS
+  H.keyedS "div"
     [ Ds.panel
     , C.transform
       $ CF.translateX
@@ -809,15 +809,16 @@ threadView model =
       $ CF.sub "0px" Ds.vars.borderWidth1
     ]
     []
-    [ maybe mempty messageList mthread
-    , if model.messageParent == model.thread then
-        mempty
-      else
-        fromMaybe mempty $ do
-          id <- model.messageParent
-          { value: message } <- TreeMap.lookup id model.events.folded.messages
-          pure $ createMessage model false mempty message
-    , messageInput
+    [ "message list" /\ maybe mempty messageList mthread
+    , "reply"
+       /\ if model.messageParent == model.thread then
+            mempty
+          else
+            fromMaybe mempty $ do
+              id <- model.messageParent
+              { value: message } <- TreeMap.lookup id model.events.folded.messages
+              pure $ createMessage model false mempty message
+    , "input" /\ messageInput
     ]
 
     where
