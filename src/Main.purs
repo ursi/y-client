@@ -739,9 +739,66 @@ threadBar model =
 
 type IsSibling = Boolean
 
+createMessage :: Model -> IsSibling -> Styles -> Message -> Html Msg
+createMessage model isSibling styles mes =
+  H.divS
+    [ Ds.following [ C.borderBottom "1px solid" ]
+    , C.position "relative"
+    , C.padding "3px .25em 6px .25em"
+    , styles
+    , if
+        model.messageParent == Just mes.id
+        && model.messageParent /= model.thread
+      then
+        C.background "#000066"
+      else
+        mempty
+    ]
+    [ onNotSelectingClick
+      $ (if isSibling then SelectSibling else SelectMessageParent)
+          mes.id
+    ]
+    [ if mes.deleted then
+        mempty
+      else
+        H.divS
+          [ C.font "0.72em sans-serif"
+          , C.opacity "0.6"
+          , C.marginBottom "0.7em"
+          ]
+          []
+          [ H.text $ getName mes.authorId model.events.folded.names
+          , getParent mes model.events.folded.messages
+            <#> formatTimeDiff <. _.timeSent ~$ mes.timeSent
+            # case _ of
+                Just diff ->
+                  H.spanS [ C.marginLeft "12px" ]
+                  [ A.title
+                    $ dateString
+                    $ asMilliseconds mes.timeSent
+                  ]
+                  [ H.text diff ]
+
+                Nothing -> mempty
+          ]
+    , H.divS
+        [ C.whiteSpace "pre-wrap"
+        , C.position "relative"
+        , C.overflowX "auto"
+        , C.marginTop "3px"
+        ]
+        []
+        [ H.text
+            if mes.deleted then
+              "(deleted)"
+            else
+              mes.content
+        ]
+    ]
+
 threadView :: Model -> Html Msg
 threadView model =
-  H.divS
+  H.keyedS "div"
     [ Ds.panel
     , C.transform
       $ CF.translateX
@@ -749,8 +806,16 @@ threadView model =
       $ CF.sub "0px" Ds.vars.borderWidth1
     ]
     []
-    [ maybe mempty messageList mthread
-    , messageInput
+    [ "message list" /\ maybe mempty messageList mthread
+    , "reply"
+       /\ if model.messageParent == model.thread then
+            mempty
+          else
+            fromMaybe mempty $ do
+              id <- model.messageParent
+              { value: message } <- TreeMap.lookup id model.events.folded.messages
+              pure $ createMessage model false mempty message
+    , "input" /\ messageInput
     ]
 
     where
@@ -775,81 +840,12 @@ threadView model =
         Array.fromFoldable
         .> map
              (\(message /\ siblings) ->
-                let
-                  createMessage :: IsSibling -> Styles -> Message -> Html Msg
-                  createMessage isSibling styles mes =
-                    H.divS
-                      [ Ds.following [ C.borderBottom "1px solid" ]
-                      , C.position "relative"
-                      , C.padding "3px .25em 6px .25em"
-                      , styles
-                      ]
-                      [ onNotSelectingClick
-                        $ (if isSibling then SelectSibling else SelectMessageParent)
-                            mes.id
-                      ]
-                      [ if model.messageParent == Just mes.id then
-                          H.divS
-                            [ C.position "absolute"
-                            , C.background
-                              $ CF.linearGradient
-                                  [ "to right"
-                                  , Ds.vars.accent1 <> " 20%"
-                                  , "transparent"
-                                  ]
-                            , C.width "20px"
-                            , C.height "100%"
-                            , C.top "0"
-                            , C.left "0"
-                            ]
-                            []
-                            []
-                        else
-                          mempty
-                      , if mes.deleted then
-                          mempty
-                        else
-                          H.divS
-                            [ C.font "0.72em sans-serif"
-                            , C.opacity "0.6"
-                            , C.marginBottom "0.7em"
-                            ]
-                            []
-                            [ H.text $ getName mes.authorId model.events.folded.names
-                            , getParent mes model.events.folded.messages
-                              <#> formatTimeDiff <. _.timeSent ~$ mes.timeSent
-                              # case _ of
-                                  Just diff ->
-                                    H.spanS [ C.marginLeft "12px" ]
-                                    [ A.title
-                                      $ dateString
-                                      $ asMilliseconds mes.timeSent
-                                    ]
-                                    [ H.text diff ]
-
-                                  Nothing -> mempty
-                            ]
-                      , H.divS
-                          [ C.whiteSpace "pre-wrap"
-                          , C.position "relative"
-                          , C.overflowX "auto"
-                          , C.marginTop "3px"
-                          ]
-                          []
-                          [ H.text
-                              if mes.deleted then
-                                "(deleted)"
-                              else
-                                mes.content
-                          ]
-                      ]
-                in
                 batch
                 $ Array.snoc
                     (siblings
-                     <#> createMessage true (C.background Ds.vars.lighterBackground22)
+                     <#> createMessage model true (C.background Ds.vars.lighterBackground22)
                     )
-                    (createMessage false (C.background Ds.vars.background) message)
+                    (createMessage model false (C.background Ds.vars.background) message)
                   # Array.reverse
              )
         .> \messagesHtml ->
